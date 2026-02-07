@@ -1,8 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, Link as LinkIcon, Stethoscope, Tablets, Plus, Users, ArrowLeft, UserCircle2, User as UserIcon, Copy, Check, Key, Calendar, Pill, Phone, AlertCircle } from "lucide-react";
+import { User, Link as LinkIcon, Stethoscope, Tablets, Plus, Users, ArrowLeft, User as UserIcon, Copy, Check, Key, Calendar, Pill, Phone, AlertCircle, Activity, ClipboardList } from "lucide-react";
 import { findPatientByCode, linkPatientToCaregiverTwoWay, getLinkedPatients, generateCaregiverCode } from "@/app/actions";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
 type Patient = {
     id: string;
@@ -11,10 +14,21 @@ type Patient = {
     gender: 'male' | 'female' | 'neutral';
 };
 
+type Medication = { id: string; name: string; dosage: string; frequency: string; is_current: boolean; notes?: string; };
+type Doctor = { id: string; name: string; specialty: string; phone: string; hospital?: string; is_primary: boolean; };
+type EmergencyContact = { id: string; name: string; relationship: string; phone: string; email?: string; is_primary: boolean; };
+
 export default function CaregiverDashboard({ user }: { user: any }) {
     const [patients, setPatients] = useState<Patient[]>([]);
     const [view, setView] = useState<'list' | 'add' | 'detail'>('list');
     const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+
+    // Patient data when viewing details
+    const [patientMedications, setPatientMedications] = useState<Medication[]>([]);
+    const [patientDoctors, setPatientDoctors] = useState<Doctor[]>([]);
+    const [patientEmergencyContacts, setPatientEmergencyContacts] = useState<EmergencyContact[]>([]);
+    const [patientProfile, setPatientProfile] = useState<any>(null);
+    const [loadingPatientData, setLoadingPatientData] = useState(false);
 
     const [myCode, setMyCode] = useState<string | null>(null);
     const [isGeneratingCode, setIsGeneratingCode] = useState(false);
@@ -40,6 +54,37 @@ export default function CaregiverDashboard({ user }: { user: any }) {
         };
         loadData();
     }, [user.sub]);
+
+    const fetchPatientDetails = async (patientId: string) => {
+        setLoadingPatientData(true);
+        try {
+            // Fetch patient profile
+            const { data: profile } = await supabase.from('profiles').select('*').eq('id', patientId).single();
+            if (profile) setPatientProfile(profile);
+
+            // Fetch medications
+            const { data: meds } = await supabase.from('medications').select('*').eq('patient_id', patientId).order('is_current', { ascending: false });
+            if (meds) setPatientMedications(meds);
+
+            // Fetch doctors
+            const { data: docs } = await supabase.from('doctors').select('*').eq('patient_id', patientId).order('is_primary', { ascending: false });
+            if (docs) setPatientDoctors(docs);
+
+            // Fetch emergency contacts
+            const { data: contacts } = await supabase.from('emergency_contacts').select('*').eq('patient_id', patientId).order('is_primary', { ascending: false });
+            if (contacts) setPatientEmergencyContacts(contacts);
+        } catch (err) {
+            console.error("Error fetching patient details:", err);
+        } finally {
+            setLoadingPatientData(false);
+        }
+    };
+
+    const handleSelectPatient = (patient: Patient) => {
+        setSelectedPatient(patient);
+        setView('detail');
+        fetchPatientDetails(patient.id);
+    };
 
     const handleGenerateCode = async () => {
         setIsGeneratingCode(true);
@@ -142,11 +187,11 @@ export default function CaregiverDashboard({ user }: { user: any }) {
 
                             {/* Patient Cards */}
                             {patients.map(patient => (
-                                <button key={patient.id} onClick={() => { setSelectedPatient(patient); setView('detail'); }} className="bg-white p-6 rounded-2xl shadow-sm border border-zinc-200 hover:shadow-lg hover:border-blue-200 transition text-left h-64 flex flex-col items-center justify-center space-y-4">
+                                <button key={patient.id} onClick={() => handleSelectPatient(patient)} className="bg-white p-6 rounded-2xl shadow-sm border border-zinc-200 hover:shadow-lg hover:border-blue-200 transition text-left h-64 flex flex-col items-center justify-center space-y-4">
                                     {renderPatientIcon(patient.gender, "w-20 h-20")}
                                     <div className="text-center">
                                         <h3 className="text-xl font-bold text-zinc-900">{patient.name}</h3>
-                                        <p className="text-zinc-500 text-sm">Tap to manage care</p>
+                                        <p className="text-zinc-500 text-sm">Tap to view details</p>
                                     </div>
                                     <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs rounded-full font-medium">Active</span>
                                 </button>
@@ -167,7 +212,6 @@ export default function CaregiverDashboard({ user }: { user: any }) {
                             <p className="text-zinc-500 mt-1">Enter the patient's invite code to link with them.</p>
                         </div>
 
-                        {/* Two-way linking info */}
                         <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 mb-6">
                             <h3 className="font-semibold text-blue-900 mb-2">Two-Way Verification Required</h3>
                             <p className="text-blue-700 text-sm">For security, the patient must first add your caregiver code (<code className="bg-blue-100 px-1 rounded">{myCode || "generate above"}</code>) to their approved caregivers list.</p>
@@ -209,55 +253,141 @@ export default function CaregiverDashboard({ user }: { user: any }) {
                 {/* VIEW: PATIENT DETAIL */}
                 {view === 'detail' && selectedPatient && (
                     <section>
-                        <button onClick={() => setView('list')} className="text-sm text-zinc-500 hover:text-blue-600 flex items-center gap-1 mb-6">
+                        <button onClick={() => { setView('list'); setSelectedPatient(null); }} className="text-sm text-zinc-500 hover:text-blue-600 flex items-center gap-1 mb-6">
                             <ArrowLeft className="w-4 h-4" /> Back to All Patients
                         </button>
 
-                        <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 p-8">
-                            <div className="flex items-center gap-6 mb-8 pb-8 border-b border-zinc-100">
-                                {renderPatientIcon(selectedPatient.gender, "w-20 h-20")}
-                                <div>
-                                    <h2 className="text-3xl font-bold text-zinc-900">{selectedPatient.name}</h2>
-                                    <div className="flex items-center gap-2 mt-2">
-                                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-bold uppercase tracking-wide">Linked Patient</span>
+                        {loadingPatientData ? (
+                            <div className="bg-white rounded-2xl p-12 text-center">
+                                <p className="text-zinc-500">Loading patient information...</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-6">
+                                {/* Patient Header */}
+                                <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 p-6">
+                                    <div className="flex items-center gap-6">
+                                        {renderPatientIcon(selectedPatient.gender, "w-20 h-20")}
+                                        <div className="flex-1">
+                                            <h2 className="text-3xl font-bold text-zinc-900">{selectedPatient.name}</h2>
+                                            <div className="flex items-center gap-4 mt-2 text-sm text-zinc-500">
+                                                {patientProfile?.date_of_birth && <span className="flex items-center gap-1"><Calendar className="w-4 h-4" /> {patientProfile.date_of_birth}</span>}
+                                                {patientProfile?.phone && <span className="flex items-center gap-1"><Phone className="w-4 h-4" /> {patientProfile.phone}</span>}
+                                            </div>
+                                            {patientProfile?.diagnosis_details && (
+                                                <p className="text-zinc-600 mt-2 text-sm">{patientProfile.diagnosis_details}</p>
+                                            )}
+                                        </div>
+                                        <span className="px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-bold">Linked</span>
                                     </div>
                                 </div>
+
+                                {/* Action Buttons */}
+                                <div className="grid md:grid-cols-2 gap-4">
+                                    <button className="flex items-center gap-4 p-5 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 transition shadow-lg">
+                                        <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                                            <ClipboardList className="w-6 h-6" />
+                                        </div>
+                                        <div className="text-left">
+                                            <h3 className="font-bold text-lg">Log Symptoms</h3>
+                                            <p className="text-blue-100 text-sm">Record daily observations</p>
+                                        </div>
+                                    </button>
+                                    <button className="flex items-center gap-4 p-5 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 transition shadow-lg">
+                                        <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                                            <Calendar className="w-6 h-6" />
+                                        </div>
+                                        <div className="text-left">
+                                            <h3 className="font-bold text-lg">Manage Schedule</h3>
+                                            <p className="text-blue-100 text-sm">Appointments & reminders</p>
+                                        </div>
+                                    </button>
+                                </div>
+
+                                {/* Medications */}
+                                <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 overflow-hidden">
+                                    <div className="px-6 py-4 border-b border-zinc-100 bg-blue-50 flex items-center gap-2">
+                                        <Pill className="w-5 h-5 text-blue-600" />
+                                        <h3 className="font-bold text-zinc-900">Medications ({patientMedications.filter(m => m.is_current).length} active)</h3>
+                                    </div>
+                                    {patientMedications.length === 0 ? (
+                                        <div className="p-6 text-center text-zinc-400">No medications recorded</div>
+                                    ) : (
+                                        <div className="divide-y divide-zinc-100">
+                                            {patientMedications.map(med => (
+                                                <div key={med.id} className="px-6 py-4 flex items-center justify-between">
+                                                    <div>
+                                                        <p className="font-medium text-zinc-900">{med.name}</p>
+                                                        <p className="text-zinc-500 text-sm">{med.dosage} • {med.frequency}</p>
+                                                        {med.notes && <p className="text-zinc-400 text-sm mt-1">{med.notes}</p>}
+                                                    </div>
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${med.is_current ? 'bg-blue-100 text-blue-800' : 'bg-zinc-100 text-zinc-600'}`}>
+                                                        {med.is_current ? 'Current' : 'Past'}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Doctors */}
+                                <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 overflow-hidden">
+                                    <div className="px-6 py-4 border-b border-zinc-100 bg-blue-50 flex items-center gap-2">
+                                        <Stethoscope className="w-5 h-5 text-blue-600" />
+                                        <h3 className="font-bold text-zinc-900">Healthcare Providers ({patientDoctors.length})</h3>
+                                    </div>
+                                    {patientDoctors.length === 0 ? (
+                                        <div className="p-6 text-center text-zinc-400">No providers recorded</div>
+                                    ) : (
+                                        <div className="divide-y divide-zinc-100">
+                                            {patientDoctors.map(doc => (
+                                                <div key={doc.id} className="px-6 py-4 flex items-center justify-between">
+                                                    <div>
+                                                        <p className="font-medium text-zinc-900 flex items-center gap-2">
+                                                            {doc.name}
+                                                            {doc.is_primary && <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">Primary</span>}
+                                                        </p>
+                                                        <p className="text-zinc-500 text-sm">{doc.specialty}{doc.hospital && ` • ${doc.hospital}`}</p>
+                                                    </div>
+                                                    {doc.phone && (
+                                                        <a href={`tel:${doc.phone}`} className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition text-sm font-medium">
+                                                            <Phone className="w-4 h-4" /> Call
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Emergency Contacts */}
+                                <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 overflow-hidden">
+                                    <div className="px-6 py-4 border-b border-zinc-100 bg-red-50 flex items-center gap-2">
+                                        <AlertCircle className="w-5 h-5 text-red-600" />
+                                        <h3 className="font-bold text-zinc-900">Emergency Contacts ({patientEmergencyContacts.length})</h3>
+                                    </div>
+                                    {patientEmergencyContacts.length === 0 ? (
+                                        <div className="p-6 text-center text-zinc-400">No emergency contacts recorded</div>
+                                    ) : (
+                                        <div className="divide-y divide-zinc-100">
+                                            {patientEmergencyContacts.map(contact => (
+                                                <div key={contact.id} className="px-6 py-4 flex items-center justify-between">
+                                                    <div>
+                                                        <p className="font-medium text-zinc-900 flex items-center gap-2">
+                                                            {contact.name}
+                                                            {contact.is_primary && <span className="px-2 py-0.5 bg-red-100 text-red-800 rounded text-xs">Primary</span>}
+                                                        </p>
+                                                        <p className="text-zinc-500 text-sm">{contact.relationship}</p>
+                                                    </div>
+                                                    <a href={`tel:${contact.phone}`} className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition text-sm font-medium">
+                                                        <Phone className="w-4 h-4" /> {contact.phone}
+                                                    </a>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-
-                            <div className="grid md:grid-cols-2 gap-6">
-                                <button className="flex flex-col items-center justify-center p-8 bg-blue-50 border border-blue-100 rounded-2xl hover:shadow-lg transition group">
-                                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform">
-                                        <Stethoscope className="w-8 h-8 text-blue-600" />
-                                    </div>
-                                    <h3 className="text-lg font-bold text-blue-900">Log Symptoms</h3>
-                                    <p className="text-sm text-blue-600/80 mt-1">Record updates for {selectedPatient.name.split(' ')[0]}</p>
-                                </button>
-
-                                <button className="flex flex-col items-center justify-center p-8 bg-blue-50 border border-blue-100 rounded-2xl hover:shadow-lg transition group">
-                                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform">
-                                        <Tablets className="w-8 h-8 text-blue-600" />
-                                    </div>
-                                    <h3 className="text-lg font-bold text-blue-900">Manage Schedule</h3>
-                                    <p className="text-sm text-blue-600/80 mt-1">Meds & Appointments</p>
-                                </button>
-
-                                <button className="flex flex-col items-center justify-center p-8 bg-blue-50 border border-blue-100 rounded-2xl hover:shadow-lg transition group">
-                                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform">
-                                        <Pill className="w-8 h-8 text-blue-600" />
-                                    </div>
-                                    <h3 className="text-lg font-bold text-blue-900">View Medications</h3>
-                                    <p className="text-sm text-blue-600/80 mt-1">Current prescriptions</p>
-                                </button>
-
-                                <button className="flex flex-col items-center justify-center p-8 bg-blue-50 border border-blue-100 rounded-2xl hover:shadow-lg transition group">
-                                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-4 shadow-sm group-hover:scale-110 transition-transform">
-                                        <AlertCircle className="w-8 h-8 text-blue-600" />
-                                    </div>
-                                    <h3 className="text-lg font-bold text-blue-900">Emergency Info</h3>
-                                    <p className="text-sm text-blue-600/80 mt-1">Contacts & critical details</p>
-                                </button>
-                            </div>
-                        </div>
+                        )}
                     </section>
                 )}
             </main>
