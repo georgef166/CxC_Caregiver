@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, Link as LinkIcon, Stethoscope, Tablets, Plus, Users, ArrowLeft, User as UserIcon, Copy, Check, Key, Calendar, Pill, Phone, AlertCircle, Activity, ClipboardList } from "lucide-react";
+import { User, Link as LinkIcon, Stethoscope, Tablets, Plus, Users, ArrowLeft, User as UserIcon, Copy, Check, Key, Calendar, Pill, Phone, AlertCircle, Activity, ClipboardList, Bot } from "lucide-react";
 import { findPatientByCode, linkPatientToCaregiverTwoWay, getLinkedPatients, generateCaregiverCode } from "@/app/actions";
 import { createClient } from "@supabase/supabase-js";
+import AIAgent from "@/components/ai-agent";
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
@@ -281,27 +282,8 @@ export default function CaregiverDashboard({ user }: { user: any }) {
                                     </div>
                                 </div>
 
-                                {/* Action Buttons */}
-                                <div className="grid md:grid-cols-2 gap-4">
-                                    <button className="flex items-center gap-4 p-5 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 transition shadow-lg">
-                                        <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                                            <ClipboardList className="w-6 h-6" />
-                                        </div>
-                                        <div className="text-left">
-                                            <h3 className="font-bold text-lg">Log Symptoms</h3>
-                                            <p className="text-blue-100 text-sm">Record daily observations</p>
-                                        </div>
-                                    </button>
-                                    <button className="flex items-center gap-4 p-5 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 transition shadow-lg">
-                                        <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
-                                            <Calendar className="w-6 h-6" />
-                                        </div>
-                                        <div className="text-left">
-                                            <h3 className="font-bold text-lg">Manage Schedule</h3>
-                                            <p className="text-blue-100 text-sm">Appointments & reminders</p>
-                                        </div>
-                                    </button>
-                                </div>
+                                {/* AI Assistant */}
+                                <AIAgent patientId={selectedPatient.id} patientName={selectedPatient.name} />
 
                                 {/* Medications */}
                                 <div className="bg-white rounded-2xl shadow-sm border border-zinc-200 overflow-hidden">
