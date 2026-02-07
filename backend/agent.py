@@ -14,25 +14,24 @@ def send_email(
     subject: str,
     body: str,
     cc: Optional[List[str]] = None,
-    reply_to: Optional[str] = None
+    reply_to: Optional[str] = None,
+    attachments: Optional[List[dict]] = None
 ) -> None:
     """
-    Sends an email using SMTP.
+    Sends an email using SMTP with experimental attachment support.
 
     Args:
         to (List[str]): List of recipient email addresses.
         subject (str): Email subject line.
         body (str): Plain-text email body.
-        cc (Optional[List[str]], optional): List of CC email addresses. Defaults to None.
-        reply_to (Optional[str], optional): Reply-To email address. Defaults to None.
+        cc (Optional[List[str]]): List of CC email addresses.
+        reply_to (Optional[str]): Reply-To email address.
+        attachments (Optional[List[dict]]): List of attachments. 
+            Each dict should have keys: 'filename', 'content' (str or bytes), 
+            'maintype' (e.g. 'text'), 'subtype' (e.g. 'calendar').
 
     Raises:
         smtplib.SMTPException: If sending the email fails.
-        KeyError: If SMTP credentials are not set in environment variables.
-    
-    Environment Variables:
-        SMTP_USER (str): The email address to send from.
-        SMTP_PASSWORD (str): The app password for SMTP authentication.
     """
     smtp_user = os.environ["SMTP_USER"]
     smtp_password = os.environ["SMTP_PASSWORD"]
@@ -49,6 +48,19 @@ def send_email(
         msg["Reply-To"] = reply_to
 
     msg.set_content(body)
+
+    if attachments:
+        for att in attachments:
+            content = att.get('content')
+            if isinstance(content, str):
+                content = content.encode('utf-8')
+            
+            msg.add_attachment(
+                content,
+                maintype=att.get('maintype', 'application'),
+                subtype=att.get('subtype', 'octet-stream'),
+                filename=att.get('filename')
+            )
 
     try:
         with smtplib.SMTP("smtp.gmail.com", 587) as server:

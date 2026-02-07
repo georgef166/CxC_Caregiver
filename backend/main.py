@@ -16,6 +16,8 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from gmail_reader import GmailReader
 from gemini_reply import GeminiReplyGenerator
 from agent import send_email
+from appointment_service import AppointmentService
+from datetime import datetime
 
 app = FastAPI(
     title="Email Assistant API",
@@ -32,9 +34,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize services
-gmail_reader = GmailReader()
+# Initialize services (lazy loading for Gmail to allow server startup)
+gmail_reader = None
 reply_generator = GeminiReplyGenerator()
+appointment_service = AppointmentService()
+
+def get_gmail_reader():
+    """Lazy initialization of Gmail reader"""
+    global gmail_reader
+    if gmail_reader is None:
+        gmail_reader = GmailReader()
+    return gmail_reader
 
 
 # Pydantic models for request/response
@@ -60,6 +70,33 @@ class MarkReadRequest(BaseModel):
 
 class EmailAnalysisRequest(BaseModel):
     email_body: str
+
+
+class SymptomAnalysisRequest(BaseModel):
+    symptom: str
+    patient_conditions: Optional[List[str]] = None
+    patient_medications: Optional[List[str]] = None
+    patient_age: Optional[int] = None
+
+
+class AppointmentBookingRequest(BaseModel):
+    doctor_email: str
+    doctor_name: str
+    patient_name: str
+    symptom: str
+    urgency: str = "moderate"
+    preferred_timeframe: str = "within 3 days"
+    caregiver_email: Optional[str] = None
+    additional_notes: Optional[str] = None
+
+
+class CalendarInviteRequest(BaseModel):
+    patient_email: str
+    patient_name: str
+    doctor_name: str
+    appointment_datetime: str  # ISO format
+    location: Optional[str] = None
+    notes: Optional[str] = None
 
 
 # API Endpoints
@@ -92,7 +129,7 @@ def get_unread_emails(max_results: int = 10):
         List of unread emails
     """
     try:
-        emails = gmail_reader.get_unread_emails(max_results=max_results)
+        emails = get_gmail_reader().get_unread_emails(max_results=max_results)
         return {
             "success": True,
             "count": len(emails),
@@ -114,7 +151,7 @@ def get_email_details(message_id: str):
         Email details including full body
     """
     try:
-        email = gmail_reader.get_email_by_id(message_id)
+        email = get_gmail_reader().get_email_by_id(message_id)
         if not email:
             raise HTTPException(status_code=404, detail="Email not found")
         return {
@@ -214,7 +251,7 @@ def mark_email_read(request: MarkReadRequest):
         Success status
     """
     try:
-        success = gmail_reader.mark_as_read(request.message_id)
+        success = get_gmail_reader().mark_as_read(request.message_id)
         if not success:
             raise HTTPException(status_code=500, detail="Failed to mark email as read")
         return {
@@ -228,13 +265,130 @@ def mark_email_read(request: MarkReadRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# ============ APPOINTMENT ENDPOINTS ============
+
+@app.post("/symptoms/analyze")
+def analyze_symptom(request: SymptomAnalysisRequest):
+    """
+    Analyze a symptom and get AI-powered recommendations
+    
+    Args:
+        request: Symptom analysis request with symptom and optional patient context
+    
+    Returns:
+        Analysis with urgency level, recommendation, and suggested actions
+    """
+    try:
+        patient_context = {}
+        if request.patient_conditions:
+            patient_context["conditions"] = request.patient_conditions
+        if request.patient_medications:
+            patient_context["medications"] = request.patient_medications
+        if request.patient_age:
+            patient_context["age"] = request.patient_age
+        
+        analysis = appointment_service.analyze_symptom_urgency(
+            symptom=request.symptom,
+            patient_context=patient_context if patient_context else None
+        )
+        
+        return {
+            "success": True,
+            "analysis": analysis
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/appointments/book")
+def book_appointment(request: AppointmentBookingRequest):
+    """
+    Send an appointment request email to a doctor
+    
+    Args:
+        request: Appointment booking request with doctor and patient details
+    
+    Returns:
+        Success status and confirmation message
+    """
+    try:
+        result = appointment_service.send_appointment_request(
+            doctor_email=request.doctor_email,
+            doctor_name=request.doctor_name,
+            patient_name=request.patient_name,
+            symptom=request.symptom,
+            urgency=request.urgency,
+            preferred_timeframe=request.preferred_timeframe,
+            caregiver_email=request.caregiver_email,
+            additional_notes=request.additional_notes
+        )
+        
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/appointments/calendar-invite")
+def send_calendar_invite(request: CalendarInviteRequest):
+    """
+    Send a calendar invite email to the patient
+    
+    Args:
+        request: Calendar invite request with appointment details
+    
+    Returns:
+        Success status and confirmation
+    """
+    try:
+        # Parse the datetime string
+        appointment_dt = datetime.fromisoformat(request.appointment_datetime)
+        
+        result = appointment_service.generate_calendar_invite_email(
+            patient_email=request.patient_email,
+            patient_name=request.patient_name,
+            doctor_name=request.doctor_name,
+            appointment_datetime=appointment_dt,
+            location=request.location,
+            notes=request.notes
+        )
+        
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid datetime format: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/auth/gmail")
+def authorize_gmail():
+    """
+    Trigger Gmail OAuth authorization.
+    This will open the authorization flow.
+    """
+    try:
+        reader = get_gmail_reader()
+        return {
+            "success": True,
+            "message": "Gmail is now authorized"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e),
+            "instructions": "Please run 'python gmail_reader.py' in the backend directory to complete OAuth"
+        }
+
+
 @app.get("/health")
 def health_check():
     """Health check endpoint"""
+    import os
+    gmail_status = "configured" if os.path.exists("token.json") else "needs_auth"
+    
     return {
         "status": "healthy",
         "services": {
-            "gmail": "connected",
+            "gmail": gmail_status,
             "gemini": "connected",
             "smtp": "configured"
         }

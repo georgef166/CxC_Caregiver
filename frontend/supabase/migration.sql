@@ -125,6 +125,24 @@ EXCEPTION
 END $$;
 
 -- =============================================
+-- SYMPTOM LOGS TABLE (for AI Agent)
+-- =============================================
+CREATE TABLE IF NOT EXISTS public.symptom_logs (
+  id uuid default uuid_generate_v4() primary key,
+  patient_id uuid references public.profiles(id) on delete cascade not null,
+  caregiver_id uuid references public.profiles(id) on delete set null,
+  symptom text not null,
+  severity text check (severity in ('mild', 'moderate', 'severe')) default 'moderate',
+  notes text,
+  logged_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+ALTER TABLE public.symptom_logs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Enable all for everyone (dev)" ON public.symptom_logs;
+CREATE POLICY "Enable all for everyone (dev)" ON public.symptom_logs FOR ALL USING (true) WITH CHECK (true);
+
+-- =============================================
 -- DONE! 
 -- =============================================
 SELECT 'Migration completed successfully!' as result;
