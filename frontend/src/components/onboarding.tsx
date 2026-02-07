@@ -2,9 +2,20 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { User, HeartHandshake } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { saveProfile, completePatientOnboarding } from "@/app/actions";
 import PatientOnboarding from "./patient-onboarding";
+
+// CareLink Logo Component
+function CareLinkLogo() {
+    return (
+        <div className="flex flex-col items-center gap-2">
+            <img src="/carelinkLogo.jpeg" alt="CareLink" className="w-14 h-14 rounded-lg" />
+            <span className="text-2xl font-bold italic text-teal-600">CareLink</span>
+        </div>
+    );
+}
+
 
 export default function Onboarding({ user, initialRole }: { user: any, initialRole?: 'patient' | 'caregiver' }) {
     const router = useRouter();
@@ -85,117 +96,130 @@ export default function Onboarding({ user, initialRole }: { user: any, initialRo
     }
 
     return (
-        <div className="min-h-screen bg-blue-50 flex flex-col">
-            {/* Header */}
-            <header className="px-6 py-6 flex justify-between items-center max-w-7xl mx-auto w-full">
-                <div className="flex items-center gap-2 font-bold text-2xl text-zinc-900 tracking-tight">
-                    <img src="/caregivelogo.png" alt="CareGlobe" className="w-9 h-9 rounded-lg shadow-sm" />
-                    CareGlobe
-                </div>
-            </header>
-
+        <div className="min-h-screen bg-slate-50 flex flex-col">
+            {/* Main Content */}
             <main className="flex-1 flex flex-col items-center justify-center p-6 pb-20">
-                <div className="max-w-2xl w-full text-center space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                    <div className="space-y-3">
-                        <h1 className="text-4xl md:text-5xl font-bold text-zinc-900 tracking-tight">
-                            Welcome, {user.name?.split(' ')[0]}!
-                        </h1>
-                        <p className="text-zinc-500 text-lg">
-                            To get started, please tell us how you will use CareGlobe.
+                {/* Logo */}
+                <div className="mb-8">
+                    <CareLinkLogo />
+                </div>
+
+                {/* Title */}
+                <div className="text-center mb-10 max-w-lg">
+                    <h1 className="text-3xl md:text-4xl font-bold text-slate-800 mb-3">
+                        Select Your Role
+                    </h1>
+                    <p className="text-slate-600 font-medium">
+                        Choose how you'll be using CareGlobe
+                    </p>
+                    <p className="text-slate-400 text-sm">
+                        This selection is permanent and cannot be changed
+                    </p>
+                </div>
+
+                {/* Role Cards */}
+                <div className="grid md:grid-cols-2 gap-6 max-w-4xl w-full mb-8">
+                    {/* Patient Card */}
+                    <div
+                        onClick={() => handleRoleSelection('patient')}
+                        className={`bg-white rounded-2xl p-8 border-2 cursor-pointer transition-all ${selectedRole === 'patient'
+                            ? 'border-teal-500 shadow-lg'
+                            : 'border-gray-100 hover:border-gray-200 hover:shadow-md'
+                            }`}
+                    >
+                        <h3 className="text-xl font-bold text-slate-800 mb-3">I'm a Patient</h3>
+                        <p className="text-slate-500 text-sm mb-6">
+                            Manage your health information, medications, appointments, and connect with caregivers who can help support your care.
                         </p>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-6">
-                        {/* Patient Option */}
+                        <ul className="space-y-2 mb-6">
+                            <li className="flex items-center gap-2 text-sm text-slate-600">
+                                <span className="w-1.5 h-1.5 bg-teal-500 rounded-full"></span>
+                                Organize medications and appointments
+                            </li>
+                            <li className="flex items-center gap-2 text-sm text-slate-600">
+                                <span className="w-1.5 h-1.5 bg-teal-500 rounded-full"></span>
+                                Store emergency contact information
+                            </li>
+                            <li className="flex items-center gap-2 text-sm text-slate-600">
+                                <span className="w-1.5 h-1.5 bg-teal-500 rounded-full"></span>
+                                Approve and manage caregiver access
+                            </li>
+                            <li className="flex items-center gap-2 text-sm text-slate-600">
+                                <span className="w-1.5 h-1.5 bg-teal-500 rounded-full"></span>
+                                Control who views your health data
+                            </li>
+                        </ul>
                         <button
-                            onClick={() => handleRoleSelection('patient')}
-                            className={`group relative p-8 rounded-3xl border-2 transition-all duration-300 text-left backdrop-blur-sm ${selectedRole === 'patient'
-                                ? 'border-blue-500 bg-white ring-4 ring-blue-100 shadow-xl scale-[1.02]'
-                                : 'border-white/50 bg-white/60 hover:border-blue-200 hover:bg-white hover:shadow-lg'
-                                }`}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleRoleSelection('patient');
+                                confirmRole();
+                            }}
+                            className="text-teal-600 font-semibold flex items-center gap-2 hover:gap-3 transition-all"
                         >
-                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-all duration-300 ${selectedRole === 'patient'
-                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
-                                : 'bg-blue-100 text-blue-600 group-hover:bg-blue-200'
-                                }`}>
-                                <User className="w-7 h-7" />
-                            </div>
-                            <h3 className={`text-xl font-bold mb-2 ${selectedRole === 'patient' ? 'text-blue-900' : 'text-zinc-900'}`}>
-                                I am a Patient
-                            </h3>
-                            <p className={`text-sm ${selectedRole === 'patient' ? 'text-blue-700' : 'text-zinc-500'}`}>
-                                I want to track my health and invite caregivers to help me.
-                            </p>
-                            {selectedRole === 'patient' && (
-                                <div className="absolute top-5 right-5 animate-in fade-in zoom-in">
-                                    <div className="w-7 h-7 bg-blue-600 rounded-full flex items-center justify-center shadow-lg">
-                                        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                        </svg>
-                                    </div>
-                                </div>
-                            )}
-                        </button>
-
-                        {/* Caregiver Option */}
-                        <button
-                            onClick={() => handleRoleSelection('caregiver')}
-                            className={`group relative p-8 rounded-3xl border-2 transition-all duration-300 text-left backdrop-blur-sm ${selectedRole === 'caregiver'
-                                ? 'border-emerald-500 bg-white ring-4 ring-emerald-100 shadow-xl scale-[1.02]'
-                                : 'border-white/50 bg-white/60 hover:border-emerald-200 hover:bg-white hover:shadow-lg'
-                                }`}
-                        >
-                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-all duration-300 ${selectedRole === 'caregiver'
-                                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200'
-                                : 'bg-emerald-100 text-emerald-600 group-hover:bg-emerald-200'
-                                }`}>
-                                <HeartHandshake className="w-7 h-7" />
-                            </div>
-                            <h3 className={`text-xl font-bold mb-2 ${selectedRole === 'caregiver' ? 'text-emerald-900' : 'text-zinc-900'}`}>
-                                I am a Caregiver
-                            </h3>
-                            <p className={`text-sm ${selectedRole === 'caregiver' ? 'text-emerald-700' : 'text-zinc-500'}`}>
-                                I want to link to a patient and help manage their care.
-                            </p>
-                            {selectedRole === 'caregiver' && (
-                                <div className="absolute top-5 right-5 animate-in fade-in zoom-in">
-                                    <div className="w-7 h-7 bg-emerald-600 rounded-full flex items-center justify-center shadow-lg">
-                                        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                        </svg>
-                                    </div>
-                                </div>
-                            )}
+                            Continue as Patient <ArrowRight className="w-4 h-4" />
                         </button>
                     </div>
 
-                    <div className="pt-8">
-                        <button
-                            onClick={confirmRole}
-                            disabled={!selectedRole || isSubmitting}
-                            className={`w-full max-w-sm py-4 rounded-2xl font-bold text-lg transition-all duration-300 shadow-xl ${!selectedRole
-                                ? 'bg-zinc-200 text-zinc-400 cursor-not-allowed shadow-none'
-                                : selectedRole === 'patient'
-                                    ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200 hover:shadow-blue-300 hover:-translate-y-0.5'
-                                    : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200 hover:shadow-emerald-300 hover:-translate-y-0.5'
-                                }`}
-                        >
-                            {isSubmitting
-                                ? 'Creating Profile...'
-                                : !selectedRole
-                                    ? 'Select a Role to Continue'
-                                    : `Continue as ${selectedRole === 'patient' ? 'Patient' : 'Caregiver'}`
-                            }
-                        </button>
-                        <p className="text-zinc-400 text-sm mt-4">
-                            This choice is permanent for this account.
+                    {/* Caregiver Card */}
+                    <div
+                        onClick={() => handleRoleSelection('caregiver')}
+                        className={`bg-white rounded-2xl p-8 border-2 cursor-pointer transition-all ${selectedRole === 'caregiver'
+                            ? 'border-teal-500 shadow-lg'
+                            : 'border-gray-100 hover:border-gray-200 hover:shadow-md'
+                            }`}
+                    >
+                        <h3 className="text-xl font-bold text-slate-800 mb-3">I'm a Caregiver</h3>
+                        <p className="text-slate-500 text-sm mb-6">
+                            Support your loved ones or patients by accessing their health information, logging symptoms, and coordinating their care.
                         </p>
+                        <ul className="space-y-2 mb-6">
+                            <li className="flex items-center gap-2 text-sm text-slate-600">
+                                <span className="w-1.5 h-1.5 bg-teal-500 rounded-full"></span>
+                                View patient medications and schedules
+                            </li>
+                            <li className="flex items-center gap-2 text-sm text-slate-600">
+                                <span className="w-1.5 h-1.5 bg-teal-500 rounded-full"></span>
+                                Log symptoms and health updates
+                            </li>
+                            <li className="flex items-center gap-2 text-sm text-slate-600">
+                                <span className="w-1.5 h-1.5 bg-teal-500 rounded-full"></span>
+                                Access emergency contact information
+                            </li>
+                            <li className="flex items-center gap-2 text-sm text-slate-600">
+                                <span className="w-1.5 h-1.5 bg-teal-500 rounded-full"></span>
+                                Coordinate care across multiple patients
+                            </li>
+                        </ul>
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleRoleSelection('caregiver');
+                                setTimeout(confirmRole, 100);
+                            }}
+                            className="text-teal-600 font-semibold flex items-center gap-2 hover:gap-3 transition-all"
+                        >
+                            Continue as Caregiver <ArrowRight className="w-4 h-4" />
+                        </button>
                     </div>
                 </div>
             </main>
 
-            <footer className="text-center py-6 text-zinc-400 text-sm">
-                &copy; 2026 CareGlobe Inc. &bull; Secure Health Data
+            {/* Footer */}
+            <footer className="py-6 px-6 flex items-center justify-between border-t border-gray-100">
+                <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 text-teal-600">
+                        <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M24 8C20 8 17 11 17 15C17 19 20 22 24 22C28 22 31 19 31 15C31 11 28 8 24 8Z" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                            <path d="M24 22V28" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                            <path d="M16 28C16 28 14 30 14 33C14 36 16 38 19 38C22 38 24 36 24 33" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                            <path d="M32 28C32 28 34 30 34 33C34 36 32 38 29 38C26 38 24 36 24 33" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+                            <circle cx="24" cy="33" r="4" fill="currentColor" />
+                        </svg>
+                    </div>
+                    <span className="text-xl font-bold italic text-teal-600">CareLink</span>
+                </div>
+                <span className="text-sm text-gray-400">©2026 CareLink</span>
             </footer>
         </div>
     );

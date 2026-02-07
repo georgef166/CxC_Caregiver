@@ -187,7 +187,7 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
     };
 
     return (
-        <div className="min-h-screen bg-blue-50 py-8 px-4">
+        <div className="min-h-screen bg-teal-50 py-8 px-4">
             <div className="max-w-3xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-8">
@@ -200,13 +200,13 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
                     {STEPS.map((step, index) => (
                         <div key={step.id} className="flex items-center">
                             <div className={`flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all ${currentStep >= step.id
-                                ? "bg-blue-600 border-blue-600 text-white"
+                                ? "bg-teal-600 border-teal-600 text-white"
                                 : "bg-white border-zinc-300 text-zinc-400"
                                 }`}>
                                 <step.icon className="w-5 h-5" />
                             </div>
                             {index < STEPS.length - 1 && (
-                                <div className={`w-8 md:w-16 h-1 mx-1 rounded ${currentStep > step.id ? "bg-blue-600" : "bg-zinc-200"
+                                <div className={`w-8 md:w-16 h-1 mx-1 rounded ${currentStep > step.id ? "bg-teal-600" : "bg-zinc-200"
                                     }`} />
                             )}
                         </div>
@@ -229,7 +229,7 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
                                         type="text"
                                         value={data.full_name}
                                         onChange={(e) => updateData("full_name", e.target.value)}
-                                        className="w-full rounded-lg border border-zinc-300 px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                        className="w-full rounded-lg border border-zinc-300 px-4 py-3 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                                         placeholder="John Doe"
                                     />
                                 </div>
@@ -239,7 +239,7 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
                                         type="date"
                                         value={data.date_of_birth}
                                         onChange={(e) => updateData("date_of_birth", e.target.value)}
-                                        className="w-full rounded-lg border border-zinc-300 px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                        className="w-full rounded-lg border border-zinc-300 px-4 py-3 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                                     />
                                 </div>
                             </div>
@@ -250,7 +250,7 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
                                         type="tel"
                                         value={data.phone}
                                         onChange={(e) => updateData("phone", e.target.value)}
-                                        className="w-full rounded-lg border border-zinc-300 px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                        className="w-full rounded-lg border border-zinc-300 px-4 py-3 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                                         placeholder="(555) 123-4567"
                                     />
                                 </div>
@@ -260,7 +260,7 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
                                         type="number"
                                         value={data.diagnosis_year || ""}
                                         onChange={(e) => updateData("diagnosis_year", parseInt(e.target.value) || null)}
-                                        className="w-full rounded-lg border border-zinc-300 px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                        className="w-full rounded-lg border border-zinc-300 px-4 py-3 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                                         placeholder="2020"
                                         min="1900"
                                         max={new Date().getFullYear()}
@@ -273,7 +273,7 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
                                     type="text"
                                     value={data.address}
                                     onChange={(e) => updateData("address", e.target.value)}
-                                    className="w-full rounded-lg border border-zinc-300 px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                    className="w-full rounded-lg border border-zinc-300 px-4 py-3 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                                     placeholder="123 Main St, City, State"
                                 />
                             </div>
@@ -282,7 +282,7 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
                                 <textarea
                                     value={data.diagnosis_details}
                                     onChange={(e) => updateData("diagnosis_details", e.target.value)}
-                                    className="w-full rounded-lg border border-zinc-300 px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                    className="w-full rounded-lg border border-zinc-300 px-4 py-3 focus:ring-2 focus:ring-teal-500 focus:outline-none"
                                     rows={3}
                                     placeholder="Any additional details about your diagnosis..."
                                 />
@@ -308,21 +308,21 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
                                             type="text"
                                             value={med.name}
                                             onChange={(e) => updateMedication(med.id, "name", e.target.value)}
-                                            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
                                             placeholder="Medication name"
                                         />
                                         <input
                                             type="text"
                                             value={med.dosage}
                                             onChange={(e) => updateMedication(med.id, "dosage", e.target.value)}
-                                            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
                                             placeholder="Dosage (e.g., 50mg)"
                                         />
                                         <input
                                             type="text"
                                             value={med.frequency}
                                             onChange={(e) => updateMedication(med.id, "frequency", e.target.value)}
-                                            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
                                             placeholder="Frequency (e.g., Twice daily)"
                                         />
                                     </div>
@@ -340,7 +340,7 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
 
                             <button
                                 onClick={addMedication}
-                                className="w-full py-3 border-2 border-dashed border-zinc-300 rounded-xl text-zinc-600 hover:border-blue-400 hover:text-blue-600 transition flex items-center justify-center gap-2"
+                                className="w-full py-3 border-2 border-dashed border-zinc-300 rounded-xl text-zinc-600 hover:border-teal-400 hover:text-teal-600 transition flex items-center justify-center gap-2"
                             >
                                 <Plus className="w-5 h-5" /> Add Medication
                             </button>
@@ -369,21 +369,21 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
                                             type="text"
                                             value={doc.name}
                                             onChange={(e) => updateDoctor(doc.id, "name", e.target.value)}
-                                            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
                                             placeholder="Doctor's name"
                                         />
                                         <input
                                             type="text"
                                             value={doc.specialty}
                                             onChange={(e) => updateDoctor(doc.id, "specialty", e.target.value)}
-                                            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
                                             placeholder="Specialty (e.g., Neurologist)"
                                         />
                                         <input
                                             type="tel"
                                             value={doc.phone}
                                             onChange={(e) => updateDoctor(doc.id, "phone", e.target.value)}
-                                            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
                                             placeholder="Phone number"
                                         />
                                     </div>
@@ -401,7 +401,7 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
 
                             <button
                                 onClick={addDoctor}
-                                className="w-full py-3 border-2 border-dashed border-zinc-300 rounded-xl text-zinc-600 hover:border-blue-400 hover:text-blue-600 transition flex items-center justify-center gap-2"
+                                className="w-full py-3 border-2 border-dashed border-zinc-300 rounded-xl text-zinc-600 hover:border-teal-400 hover:text-teal-600 transition flex items-center justify-center gap-2"
                             >
                                 <Plus className="w-5 h-5" /> Add Healthcare Provider
                             </button>
@@ -426,21 +426,21 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
                                             type="text"
                                             value={contact.name}
                                             onChange={(e) => updateEmergencyContact(contact.id, "name", e.target.value)}
-                                            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
                                             placeholder="Contact name"
                                         />
                                         <input
                                             type="text"
                                             value={contact.relationship}
                                             onChange={(e) => updateEmergencyContact(contact.id, "relationship", e.target.value)}
-                                            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
                                             placeholder="Relationship (e.g., Spouse)"
                                         />
                                         <input
                                             type="tel"
                                             value={contact.phone}
                                             onChange={(e) => updateEmergencyContact(contact.id, "phone", e.target.value)}
-                                            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
                                             placeholder="Phone number"
                                         />
                                     </div>
@@ -449,7 +449,7 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
 
                             <button
                                 onClick={addEmergencyContact}
-                                className="w-full py-3 border-2 border-dashed border-zinc-300 rounded-xl text-zinc-600 hover:border-blue-400 hover:text-blue-600 transition flex items-center justify-center gap-2"
+                                className="w-full py-3 border-2 border-dashed border-zinc-300 rounded-xl text-zinc-600 hover:border-teal-400 hover:text-teal-600 transition flex items-center justify-center gap-2"
                             >
                                 <Plus className="w-5 h-5" /> Add Emergency Contact
                             </button>
@@ -459,9 +459,9 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
                     {/* Step 5: Allowed Caregivers */}
                     {currentStep === 5 && (
                         <div className="space-y-4">
-                            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
-                                <h3 className="font-semibold text-blue-900 mb-2">Two-Way Linking</h3>
-                                <p className="text-blue-700 text-sm">
+                            <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 mb-6">
+                                <h3 className="font-semibold text-teal-900 mb-2">Two-Way Linking</h3>
+                                <p className="text-teal-700 text-sm">
                                     For security, caregivers can only link to you if you've pre-approved their code here.
                                     Ask your caregiver for their CareGlobe code and add it below.
                                 </p>
@@ -480,14 +480,14 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
                                             type="text"
                                             value={caregiver.caregiver_code}
                                             onChange={(e) => updateAllowedCaregiver(caregiver.id, "caregiver_code", e.target.value)}
-                                            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
                                             placeholder="Caregiver's code (e.g., mom-1234)"
                                         />
                                         <input
                                             type="text"
                                             value={caregiver.nickname}
                                             onChange={(e) => updateAllowedCaregiver(caregiver.id, "nickname", e.target.value)}
-                                            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                                            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
                                             placeholder="Nickname (e.g., Mom)"
                                         />
                                     </div>
@@ -496,7 +496,7 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
 
                             <button
                                 onClick={addAllowedCaregiver}
-                                className="w-full py-3 border-2 border-dashed border-zinc-300 rounded-xl text-zinc-600 hover:border-blue-400 hover:text-blue-600 transition flex items-center justify-center gap-2"
+                                className="w-full py-3 border-2 border-dashed border-zinc-300 rounded-xl text-zinc-600 hover:border-teal-400 hover:text-teal-600 transition flex items-center justify-center gap-2"
                             >
                                 <Plus className="w-5 h-5" /> Add Approved Caregiver
                             </button>
@@ -558,7 +558,7 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
                             <button
                                 onClick={() => setCurrentStep(prev => Math.min(STEPS.length, prev + 1))}
                                 disabled={!canProceed()}
-                                className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                className="px-6 py-3 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                             >
                                 Next <ChevronRight className="w-5 h-5" />
                             </button>

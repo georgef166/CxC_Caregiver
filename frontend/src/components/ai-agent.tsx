@@ -27,7 +27,7 @@ function formatAIText(text: string): React.ReactElement[] {
             const content = formatted.replace(/^[\s]*[•\-\*]\s*/, '');
             return (
                 <div key={i} className="flex gap-2 py-1">
-                    <span className="text-blue-500">•</span>
+                    <span className="text-teal-500">•</span>
                     <span dangerouslySetInnerHTML={{ __html: content }} />
                 </div>
             );
@@ -188,7 +188,7 @@ export default function AIAgent({ patientId, patientName }: { patientId: string;
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <button
                     onClick={() => { setActiveModal('symptom'); setResult(null); }}
-                    className="flex flex-col items-center gap-3 p-5 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 transition shadow-lg"
+                    className="flex flex-col items-center gap-3 p-5 bg-teal-600 text-white rounded-2xl hover:bg-teal-700 transition shadow-lg"
                 >
                     <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                         <ClipboardList className="w-6 h-6" />
@@ -198,7 +198,7 @@ export default function AIAgent({ patientId, patientName }: { patientId: string;
 
                 <button
                     onClick={() => { setActiveModal('summary'); getSummary(); }}
-                    className="flex flex-col items-center gap-3 p-5 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 transition shadow-lg"
+                    className="flex flex-col items-center gap-3 p-5 bg-teal-600 text-white rounded-2xl hover:bg-teal-700 transition shadow-lg"
                 >
                     <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                         <FileText className="w-6 h-6" />
@@ -208,7 +208,7 @@ export default function AIAgent({ patientId, patientName }: { patientId: string;
 
                 <button
                     onClick={() => { setActiveModal('insights'); getInsights(); }}
-                    className="flex flex-col items-center gap-3 p-5 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 transition shadow-lg"
+                    className="flex flex-col items-center gap-3 p-5 bg-teal-600 text-white rounded-2xl hover:bg-teal-700 transition shadow-lg"
                 >
                     <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                         <TrendingUp className="w-6 h-6" />
@@ -218,9 +218,9 @@ export default function AIAgent({ patientId, patientName }: { patientId: string;
 
                 <button
                     onClick={() => { setActiveModal('history'); getRecentSymptoms(); }}
-                    className="flex flex-col items-center gap-3 p-5 bg-white text-blue-600 border-2 border-blue-200 rounded-2xl hover:bg-blue-50 transition"
+                    className="flex flex-col items-center gap-3 p-5 bg-white text-teal-600 border-2 border-teal-200 rounded-2xl hover:bg-teal-50 transition"
                 >
-                    <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center">
                         <History className="w-6 h-6" />
                     </div>
                     <span className="font-semibold">Symptom Log</span>
@@ -232,7 +232,7 @@ export default function AIAgent({ patientId, patientName }: { patientId: string;
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-2xl max-w-xl w-full max-h-[80vh] overflow-hidden shadow-2xl">
                         {/* Modal Header */}
-                        <div className="px-6 py-4 bg-blue-600 text-white flex items-center justify-between">
+                        <div className="px-6 py-4 bg-teal-600 text-white flex items-center justify-between">
                             <h2 className="text-lg font-bold flex items-center gap-2">
                                 {activeModal === 'symptom' && <><ClipboardList className="w-5 h-5" /> Log Symptom</>}
                                 {activeModal === 'summary' && <><FileText className="w-5 h-5" /> Care Summary</>}
@@ -259,7 +259,7 @@ export default function AIAgent({ patientId, patientName }: { patientId: string;
                                             onChange={(e) => setSymptomInput(e.target.value)}
                                             placeholder="e.g., Had tremors in hands this morning after breakfast, seemed moderate..."
                                             rows={3}
-                                            className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-blue-500 focus:outline-none resize-none"
+                                            className="w-full px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-teal-500 focus:outline-none resize-none"
                                         />
                                         <button
                                             onClick={startVoiceInput}
@@ -283,7 +283,7 @@ export default function AIAgent({ patientId, patientName }: { patientId: string;
                                     <button
                                         onClick={logSymptom}
                                         disabled={!symptomInput.trim() || isLoading}
-                                        className="w-full py-3 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition flex items-center justify-center gap-2"
+                                        className="w-full py-3 bg-teal-600 text-white font-semibold rounded-xl hover:bg-teal-700 disabled:opacity-50 transition flex items-center justify-center gap-2"
                                     >
                                         {isLoading ? (
                                             <><Loader2 className="w-5 h-5 animate-spin" /> Processing...</>
@@ -327,10 +327,10 @@ export default function AIAgent({ patientId, patientName }: { patientId: string;
                                         <div className="prose prose-sm max-w-none">
                                             {activeModal === 'summary' && result.stats && (
                                                 <div className="flex gap-4 mb-4">
-                                                    <div className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                                                    <div className="px-3 py-1 bg-teal-100 text-teal-800 rounded-full text-sm">
                                                         {result.stats.medications} medications
                                                     </div>
-                                                    <div className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
+                                                    <div className="px-3 py-1 bg-teal-100 text-teal-800 rounded-full text-sm">
                                                         {result.stats.recentSymptoms} recent symptoms
                                                     </div>
                                                 </div>
