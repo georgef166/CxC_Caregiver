@@ -1,5 +1,48 @@
-
 # Backend
 backend/venv/
 backend/__pycache__/
 *.pyc
+
+# Environment and credentials
+.env
+backend/.env
+*.env
+
+# Google API credentials and tokens
+credentials.json
+token.json
+backend/credentials.json
+backend/token.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
