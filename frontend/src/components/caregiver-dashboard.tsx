@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { User, Link as LinkIcon, Stethoscope, Tablets, Plus, Users, ArrowLeft, User as UserIcon, Copy, Check, Key, Calendar, Pill, Phone, AlertCircle, Activity, ClipboardList, Bot } from "lucide-react";
+import { User, Link as LinkIcon, Stethoscope, Tablets, Plus, Users, ArrowLeft, User as UserIcon, Copy, Check, Key, Calendar, Pill, Phone, AlertCircle, Activity, ClipboardList, Bot, X } from "lucide-react";
 import { findPatientByCode, linkPatientToCaregiverTwoWay, getLinkedPatients, generateCaregiverCode } from "@/app/actions";
 import { createClient } from "@supabase/supabase-js";
 import AIAgent from "@/components/ai-agent";
@@ -34,6 +34,7 @@ export default function CaregiverDashboard({ user }: { user: any }) {
     const [myCode, setMyCode] = useState<string | null>(null);
     const [isGeneratingCode, setIsGeneratingCode] = useState(false);
     const [codeCopied, setCodeCopied] = useState(false);
+    const [codeExpanded, setCodeExpanded] = useState(true);
 
     const [inviteCode, setInviteCode] = useState("");
     const [isSearching, setIsSearching] = useState(false);
@@ -84,6 +85,7 @@ export default function CaregiverDashboard({ user }: { user: any }) {
     const handleSelectPatient = (patient: Patient) => {
         setSelectedPatient(patient);
         setView('detail');
+        setCodeExpanded(false); // Collapse the code section
         fetchPatientDetails(patient.id);
     };
 
@@ -143,32 +145,34 @@ export default function CaregiverDashboard({ user }: { user: any }) {
             </header>
 
             <main className="max-w-6xl mx-auto px-6 py-8 space-y-8">
-                {/* MY CAREGIVER CODE SECTION */}
-                <section className="bg-blue-600 p-6 rounded-2xl shadow-lg text-white">
-                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                            <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center">
-                                <Key className="w-7 h-7 text-white" />
+                {/* MY CAREGIVER CODE SECTION - Hidden when viewing patient details */}
+                {view !== 'detail' && (
+                    <section className="bg-blue-600 p-6 rounded-2xl shadow-lg text-white">
+                        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                            <div className="flex items-center gap-4">
+                                <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center">
+                                    <Key className="w-7 h-7 text-white" />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-white text-lg">Your Caregiver Code</h3>
+                                    <p className="text-blue-100 text-sm">Share this with patients so they can approve you</p>
+                                </div>
                             </div>
-                            <div>
-                                <h3 className="font-bold text-white text-lg">Your Caregiver Code</h3>
-                                <p className="text-blue-100 text-sm">Share this with patients so they can approve you</p>
-                            </div>
-                        </div>
-                        {myCode ? (
-                            <div className="flex items-center gap-3">
-                                <code className="bg-white/20 px-5 py-3 rounded-xl font-mono text-xl font-bold tracking-wider border border-white/20">{myCode}</code>
-                                <button onClick={copyCode} className="p-3 bg-white text-blue-600 rounded-xl hover:bg-blue-50 transition shadow-lg">
-                                    {codeCopied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                            {myCode ? (
+                                <div className="flex items-center gap-3">
+                                    <code className="bg-white/20 px-5 py-3 rounded-xl font-mono text-xl font-bold tracking-wider border border-white/20">{myCode}</code>
+                                    <button onClick={copyCode} className="p-3 bg-white text-blue-600 rounded-xl hover:bg-blue-50 transition shadow-lg">
+                                        {codeCopied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                                    </button>
+                                </div>
+                            ) : (
+                                <button onClick={handleGenerateCode} disabled={isGeneratingCode} className="px-5 py-3 bg-white text-blue-600 rounded-xl font-bold hover:bg-blue-50 transition shadow-lg disabled:opacity-50">
+                                    {isGeneratingCode ? "Generating..." : "Generate Code"}
                                 </button>
-                            </div>
-                        ) : (
-                            <button onClick={handleGenerateCode} disabled={isGeneratingCode} className="px-5 py-3 bg-white text-blue-600 rounded-xl font-bold hover:bg-blue-50 transition shadow-lg disabled:opacity-50">
-                                {isGeneratingCode ? "Generating..." : "Generate Code"}
-                            </button>
-                        )}
-                    </div>
-                </section>
+                            )}
+                        </div>
+                    </section>
+                )}
 
                 {/* VIEW: PATIENT LIST */}
                 {view === 'list' && (
