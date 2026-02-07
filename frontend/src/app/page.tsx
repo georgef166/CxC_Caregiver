@@ -2,7 +2,7 @@ import { auth0 } from "@/lib/auth0";
 import { createClient } from "@supabase/supabase-js";
 import Onboarding from "@/components/onboarding";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, User, Heart, Brain } from "lucide-react";
 
 // Initialize Supabase Client
 // Note: In a real production app with RLS, we'd need to forward the Auth0 token 
@@ -23,17 +23,17 @@ export default async function Home(props: Props) {
   // 1. Not Logged In -> Show Landing Page
   if (!session) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50/50 flex flex-col font-sans">
+      <div className="min-h-screen bg-blue-50 flex flex-col font-sans">
         <header className="px-6 py-6 flex justify-between items-center max-w-7xl mx-auto w-full">
           <div className="flex items-center gap-2 font-bold text-2xl text-zinc-900 tracking-tight">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-sm scheme-dark">CG</div>
+            <img src="/caregivelogo.png" alt="CareGlobe" className="w-9 h-9 rounded-lg shadow-sm" />
             CareGlobe
           </div>
         </header>
 
         <main className="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-4xl mx-auto w-full">
-          <div className="space-y-6 mb-12 animate-in fade-in slide-in-from-bottom-8 duration-700">
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white border border-blue-100 rounded-full text-blue-600 text-sm font-medium shadow-sm mb-4">
+          <div className="space-y-8 mb-16 animate-in fade-in slide-in-from-bottom-8 duration-700">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white border border-blue-100 rounded-full text-blue-600 text-sm font-medium shadow-sm">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
@@ -49,48 +49,44 @@ export default async function Home(props: Props) {
               <br />
               <span className="font-medium text-zinc-900">Patients invite. Caregivers connect.</span>
             </p>
+
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
+              <a
+                href="/auth/login"
+                className="inline-flex items-center justify-center px-8 py-4 bg-zinc-900 text-white font-bold text-lg rounded-2xl hover:bg-zinc-800 transition shadow-xl hover:shadow-2xl hover:-translate-y-1 transform duration-300 min-w-[200px]"
+              >
+                Get Started
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </a>
+              <a
+                href="https://devpost.com/software/careglobe"
+                target="_blank"
+                className="inline-flex items-center justify-center px-8 py-4 bg-white text-zinc-700 font-bold text-lg rounded-2xl border-2 border-zinc-100 hover:border-zinc-200 hover:bg-zinc-50 transition min-w-[200px]"
+              >
+                Learn More
+              </a>
+            </div>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6 w-full max-w-2xl animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-200">
-            {/* Patient Card */}
-            <div className="group relative bg-white p-8 rounded-3xl shadow-sm hover:shadow-xl transition-all border border-zinc-100 hover:border-blue-100 text-left overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-blue-50 rounded-bl-[100px] -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
-              <div className="relative z-10">
-                <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:rotate-6 transition-transform">
-                  🤒
+          <div className="w-full max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-200 p-8">
+            <div className="relative rounded-3xl overflow-hidden border border-zinc-200 shadow-2xl bg-white/50 backdrop-blur-xl">
+              <div className="absolute inset-0 bg-gradient-to-tr from-blue-50/50 via-indigo-50/50 to-emerald-50/50 opacity-50"></div>
+              <div className="relative p-12 grid md:grid-cols-3 gap-8 text-left">
+                <div className="space-y-4">
+                  <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center"><User className="w-6 h-6 text-blue-600" /></div>
+                  <h3 className="text-xl font-bold text-zinc-900">For Patients</h3>
+                  <p className="text-zinc-500">Track severity, manage medications, and share your status secure in one tap.</p>
                 </div>
-                <h2 className="text-2xl font-bold text-zinc-900 mb-2">I am a Patient</h2>
-                <p className="text-zinc-500 mb-8 min-h-[48px]">
-                  Track symptoms, medications, and generate invite codes for your family.
-                </p>
-                <a
-                  href={`/auth/login?returnTo=${encodeURIComponent("/?role=patient")}`}
-                  className="inline-flex w-full items-center justify-center px-6 py-4 bg-zinc-900 text-white font-semibold rounded-xl hover:bg-zinc-800 transition shadow-lg group-hover:shadow-blue-500/20"
-                >
-                  Login as Patient
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </a>
-              </div>
-            </div>
-
-            {/* Caregiver Card */}
-            <div className="group relative bg-white p-8 rounded-3xl shadow-sm hover:shadow-xl transition-all border border-zinc-100 hover:border-emerald-100 text-left overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-bl-[100px] -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
-              <div className="relative z-10">
-                <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:rotate-6 transition-transform">
-                  ❤️
+                <div className="space-y-4">
+                  <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center"><Heart className="w-6 h-6 text-emerald-600" /></div>
+                  <h3 className="text-xl font-bold text-zinc-900">For Caregivers</h3>
+                  <p className="text-zinc-500">Get real-time updates, manage appointments, and stay connected with your loved ones.</p>
                 </div>
-                <h2 className="text-2xl font-bold text-zinc-900 mb-2">I am a Caregiver</h2>
-                <p className="text-zinc-500 mb-8 min-h-[48px]">
-                  Support your loved one. Enter an invite link to view their updates.
-                </p>
-                <a
-                  href={`/auth/login?returnTo=${encodeURIComponent("/?role=caregiver")}`}
-                  className="inline-flex w-full items-center justify-center px-6 py-4 bg-white border-2 border-zinc-200 text-zinc-900 font-semibold rounded-xl hover:border-emerald-500 hover:text-emerald-700 transition"
-                >
-                  Login as Caregiver
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </a>
+                <div className="space-y-4">
+                  <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center"><Brain className="w-6 h-6 text-indigo-600" /></div>
+                  <h3 className="text-xl font-bold text-zinc-900">AI Insights</h3>
+                  <p className="text-zinc-500">Powered by advanced AI to detect trends and suggest care adjustments automatically.</p>
+                </div>
               </div>
             </div>
           </div>
@@ -130,12 +126,12 @@ export default async function Home(props: Props) {
 
     // For now, we show the dashboard selection but filtered by their role
     return (
-      <div className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-4">
-        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center space-y-6 border border-zinc-100">
+      <div className="min-h-screen bg-blue-50 flex flex-col items-center justify-center p-4">
+        <div className="bg-white/70 backdrop-blur-sm p-8 rounded-3xl shadow-xl max-w-md w-full text-center space-y-6 border border-white/50">
           <img
             src={session.user.picture}
             alt={session.user.name}
-            className="w-20 h-20 rounded-full mx-auto border-4 border-blue-50"
+            className="w-20 h-20 rounded-full mx-auto border-4 border-white shadow-lg"
           />
           <h1 className="text-2xl font-bold text-zinc-900">Welcome back, {(session.user.name || 'User').split(' ')[0]}!</h1>
           <p className="text-zinc-500">You are registered as a <strong className="uppercase text-zinc-900">{userProfile.role}</strong>.</p>
@@ -144,7 +140,7 @@ export default async function Home(props: Props) {
             {userProfile.role === 'patient' && (
               <Link
                 href="/dashboard/patient"
-                className="flex items-center justify-between px-6 py-4 bg-blue-50 text-blue-700 rounded-xl hover:bg-blue-100 transition group"
+                className="flex items-center justify-between px-6 py-4 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 transition group shadow-lg"
               >
                 <span className="font-semibold">Go to Patient Dashboard</span>
                 <ArrowRight className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity transform group-hover:translate-x-1" />
@@ -154,7 +150,7 @@ export default async function Home(props: Props) {
             {userProfile.role === 'caregiver' && (
               <Link
                 href="/dashboard/caregiver"
-                className="flex items-center justify-between px-6 py-4 bg-emerald-50 text-emerald-700 rounded-xl hover:bg-emerald-100 transition group"
+                className="flex items-center justify-between px-6 py-4 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition group shadow-lg"
               >
                 <span className="font-semibold">Go to Caregiver Dashboard</span>
                 <ArrowRight className="w-5 h-5 opacity-0 group-hover:opacity-100 transition-opacity transform group-hover:translate-x-1" />

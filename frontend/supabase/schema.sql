@@ -11,77 +11,144 @@ create table public.profiles (
   role user_role not null,
   full_name text,
   avatar_url text,
+  invite_code text unique, -- Unique code for linking (used by both patients and caregivers)
+  date_of_birth date,
+  diagnosis_year int,
+  diagnosis_details text, -- More detailed diagnosis info
+  bio text,
+  phone text,
+  address text,
+  onboarding_complete boolean default false, -- Track if user completed full onboarding
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
 -- Enable RLS
 alter table public.profiles enable row level security;
 
--- Policies for profiles
+-- =============================================
+-- MEDICATIONS TABLE
+-- =============================================
+create table public.medications (
+  id uuid default uuid_generate_v4() primary key,
+  patient_id uuid references public.profiles(id) on delete cascade not null,
+  name text not null,
+  dosage text, -- e.g., "50mg"
+  frequency text, -- e.g., "Twice daily"
+  start_date date,
+  end_date date, -- null if ongoing
+  is_current boolean default true,
+  notes text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.medications enable row level security;
+create policy "Enable all for everyone (dev)" on public.medications for all using (true) with check (true);
+
+-- =============================================
+-- DOCTORS/HEALTHCARE PROVIDERS TABLE
+-- =============================================
+create table public.doctors (
+  id uuid default uuid_generate_v4() primary key,
+  patient_id uuid references public.profiles(id) on delete cascade not null,
+  name text not null,
+  specialty text, -- e.g., "Neurologist", "Primary Care"
+  hospital text,
+  phone text,
+  email text,
+  address text,
+  is_primary boolean default false, -- Primary care doctor
+  notes text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.doctors enable row level security;
+create policy "Enable all for everyone (dev)" on public.doctors for all using (true) with check (true);
+
+-- =============================================
+-- APPOINTMENTS TABLE
+-- =============================================
+create table public.appointments (
+  id uuid default uuid_generate_v4() primary key,
+  patient_id uuid references public.profiles(id) on delete cascade not null,
+  doctor_id uuid references public.doctors(id) on delete set null,
+  title text not null,
+  appointment_date date not null,
+  appointment_time time,
+  location text,
+  is_recurring boolean default false,
+  recurrence_pattern text, -- e.g., "weekly", "monthly"
+  notes text,
+  status text check (status in ('scheduled', 'completed', 'cancelled')) default 'scheduled',
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.appointments enable row level security;
+create policy "Enable all for everyone (dev)" on public.appointments for all using (true) with check (true);
+
+-- =============================================
+-- EMERGENCY CONTACTS TABLE
+-- =============================================
+create table public.emergency_contacts (
+  id uuid default uuid_generate_v4() primary key,
+  patient_id uuid references public.profiles(id) on delete cascade not null,
+  name text not null,
+  relationship text, -- e.g., "Spouse", "Child", "Friend"
+  phone text not null,
+  email text,
+  is_primary boolean default false,
+  notes text,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.emergency_contacts enable row level security;
+create policy "Enable all for everyone (dev)" on public.emergency_contacts for all using (true) with check (true);
+
+-- =============================================
+-- CAREGIVER LINKING (TWO-WAY APPROVAL SYSTEM)
+-- =============================================
+
+-- Allowed caregivers: Patient pre-approves caregiver codes that can link to them
+create table public.allowed_caregivers (
+  id uuid default uuid_generate_v4() primary key,
+  patient_id uuid references public.profiles(id) on delete cascade not null,
+  caregiver_code text not null, -- The caregiver's invite_code that patient approves
+  nickname text, -- What patient calls this caregiver, e.g., "Mom"
+  approved_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique(patient_id, caregiver_code)
+);
+
+alter table public.allowed_caregivers enable row level security;
+create policy "Enable all for everyone (dev)" on public.allowed_caregivers for all using (true) with check (true);
+
+-- Table for established links (now requires two-way approval)
+create table public.caregiver_patient_links (
+  id uuid default uuid_generate_v4() primary key,
+  caregiver_id uuid references public.profiles(id) not null,
+  patient_id uuid references public.profiles(id) not null,
+  patient_approved boolean default false, -- Patient added caregiver's code
+  caregiver_approved boolean default false, -- Caregiver added patient's code
+  status text check (status in ('pending', 'active', 'inactive')) default 'pending',
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique(caregiver_id, patient_id)
+);
+
+alter table public.caregiver_patient_links enable row level security;
+create policy "Enable all for everyone (dev)" on public.caregiver_patient_links for all using (true) with check (true);
+
+-- =============================================
+-- PROFILE POLICIES
+-- =============================================
 create policy "Users can view their own profile" on public.profiles
   for select using (auth0_id = current_setting('request.jwt.claim.sub', true));
 
 create policy "Users can update their own profile" on public.profiles
   for update using (auth0_id = current_setting('request.jwt.claim.sub', true));
 
--- Create a table for patient-caregiver relationships (invites and active links)
-create table public.caregiver_invites (
-  id uuid default uuid_generate_v4() primary key,
-  patient_id uuid references public.profiles(id) not null,
-  caregiver_nickname text not null, -- The name the patient calls the caregiver (e.g. "Mom", "Sarah")
-  invite_code text unique default encode(gen_random_bytes(6), 'hex'), -- Simple unique code
-  status text check (status in ('pending', 'accepted', 'rejected')) default 'pending',
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
--- Table for established links
-create table public.caregiver_patient_links (
-  id uuid default uuid_generate_v4() primary key,
-  caregiver_id uuid references public.profiles(id) not null,
-  patient_id uuid references public.profiles(id) not null,
-  status text check (status in ('active', 'inactive')) default 'active',
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  unique(caregiver_id, patient_id)
-);
-
--- RLS for invites
-alter table public.caregiver_invites enable row level security;
-
--- Only the patient who created the invite can see it
-create policy "Patients can view their invites" on public.caregiver_invites
-  for select using (patient_id in (
-    select id from public.profiles where auth0_id = current_setting('request.jwt.claim.sub', true)
-  ));
-
--- RLS for links
-alter table public.caregiver_patient_links enable row level security;
-
--- Patients can see who is linked to them
-create policy "Patients can view their caregivers" on public.caregiver_patient_links
-  for select using (patient_id in (
-    select id from public.profiles where auth0_id = current_setting('request.jwt.claim.sub', true)
-  ));
-
--- Caregivers can see who they are linked to
-create policy "Caregivers can view their patients" on public.caregiver_patient_links
-  for select using (caregiver_id in (
-    select id from public.profiles where auth0_id = current_setting('request.jwt.claim.sub', true)
-  ));
-
--- Allow users to insert their own profile
--- This is necessary for the onboarding flow
-create policy "Enable insert for authenticated users only" on public.profiles
-  for insert with check (auth0_id = current_setting('request.jwt.claim.sub', true));
-
--- Fallback policy for development/hackathon if Auth0 integration isn't perfectly syncing tokens yet
--- This allows anyone to insert a profile (be careful in production!)
 create policy "Enable insert for everyone (dev)" on public.profiles
   for insert with check (true);
 
--- Allow updates for everyone (dev fallback)
 create policy "Enable update for everyone (dev)" on public.profiles
   for update using (true);
 
--- Allow select for everyone (dev fallback) - solves duplicate key errors by letting us see existing rows
 create policy "Enable select for everyone (dev)" on public.profiles
   for select using (true);
