@@ -131,7 +131,7 @@ export default function PatientDashboard({ user }: { user: Auth0User }) {
         setAddingCaregiver(true);
         const { data, error } = await supabase.from('allowed_caregivers').insert({
             patient_id: profile.id,
-            caregiver_code: newCaregiverCode.trim().toUpperCase(),
+            caregiver_code: newCaregiverCode.trim().toLowerCase(),
             nickname: newCaregiverNickname.trim() || "Caregiver"
         }).select().single();
         if (data) setAllowedCaregivers(prev => [...prev, data]);

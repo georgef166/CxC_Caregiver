@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "email-assistant": {
+      "command": "python",
+      "args": ["mcp_server.py"],
+      "env": {
+        "GEMINI_API_KEY": "${GEMINI_API_KEY}",
+        "SMTP_USER": "${SMTP_USER}",
+        "SMTP_PASSWORD": "${SMTP_PASSWORD}"
+      }
+    }
+  }
+}

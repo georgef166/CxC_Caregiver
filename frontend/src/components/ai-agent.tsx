@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { ClipboardList, FileText, TrendingUp, Mic, X, Loader2, Send, CheckCircle, AlertCircle, History } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ClipboardList, FileText, TrendingUp, Mic, X, Loader2, Send, CheckCircle, AlertCircle, History, Calendar, Stethoscope, Mail } from "lucide-react";
 
 type SymptomLog = {
     id: string;
@@ -49,12 +49,59 @@ function formatAIText(text: string): React.ReactElement[] {
     });
 }
 
-export default function AIAgent({ patientId, patientName }: { patientId: string; patientName: string }) {
+type Doctor = {
+    id: string;
+    name: string;
+    specialty: string;
+    email?: string;
+    is_primary: boolean;
+};
+
+type SymptomAnalysis = {
+    symptom: string;
+    urgency: string;
+    recommendation: string;
+    suggest_appointment: boolean;
+    suggested_timeframe: string;
+    questions_to_ask: string[];
+};
+
+export default function AIAgent({ patientId, patientName, doctors = [], onBookAppointment, onDraftEmail, forceOpenAction, compact = false }: {
+    patientId: string;
+    patientName: string;
+    doctors?: Doctor[];
+    onBookAppointment?: (symptom: string) => void;
+    onDraftEmail?: (symptom: string, urgency: string) => void;
+    forceOpenAction?: 'symptom' | 'summary' | 'insights' | null;
+    compact?: boolean;
+}) {
     const [activeModal, setActiveModal] = useState<'symptom' | 'summary' | 'insights' | 'history' | null>(null);
+
+    // React to external triggers (e.g. Quick Actions)
+    useEffect(() => {
+        if (forceOpenAction) {
+            setActiveModal(forceOpenAction);
+        }
+    }, [forceOpenAction]);
+
     const [isLoading, setIsLoading] = useState(false);
     const [result, setResult] = useState<any>(null);
     const [symptomInput, setSymptomInput] = useState("");
+
+    // ... (rest of state/methods) stays same ...
+    // Using simple replacement for start of component to avoid finding complex button block
+
+    const startListening = () => {
+        // ... (this logic is inside component, I can't easily replace it with just top-level match)
+        // I will use multi_replace to target specific blocks.
+    };
+
+    // ...
+
     const [isListening, setIsListening] = useState(false);
+    const [symptomAnalysis, setSymptomAnalysis] = useState<SymptomAnalysis | null>(null);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [lastLoggedSymptom, setLastLoggedSymptom] = useState("");
 
     const logSymptom = async () => {
         if (!symptomInput.trim()) return;
@@ -75,12 +122,37 @@ export default function AIAgent({ patientId, patientName }: { patientId: string;
             const data = await response.json();
             setResult(data);
             if (data.success) {
+                setLastLoggedSymptom(symptomInput);
                 setSymptomInput("");
+                // Analyze the symptom for appointment suggestion
+                analyzeSymptom(symptomInput);
             }
         } catch (error) {
             setResult({ success: false, error: "Failed to connect to AI" });
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const analyzeSymptom = async (symptom: string) => {
+        setIsAnalyzing(true);
+        try {
+            const response = await fetch("/api/symptoms/analyze", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    symptom,
+                    patient_name: patientName
+                }),
+            });
+            const data = await response.json();
+            if (data.success) {
+                setSymptomAnalysis(data.analysis);
+            }
+        } catch (error) {
+            console.error("Error analyzing symptom:", error);
+        } finally {
+            setIsAnalyzing(false);
         }
     };
 
@@ -182,13 +254,22 @@ export default function AIAgent({ patientId, patientName }: { patientId: string;
         setSymptomInput("");
     };
 
+    // Auto-fetch data when modal opens
+    useEffect(() => {
+        if (activeModal === 'summary') {
+            getSummary();
+        } else if (activeModal === 'insights') {
+            getInsights();
+        }
+    }, [activeModal]);
+
     return (
         <>
             {/* Action Buttons */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className={`grid gap-4 ${compact ? 'grid-cols-1' : 'grid-cols-2 md:grid-cols-4'}`}>
                 <button
                     onClick={() => { setActiveModal('symptom'); setResult(null); }}
-                    className="flex flex-col items-center gap-3 p-5 bg-teal-600 text-white rounded-2xl hover:bg-teal-700 transition shadow-lg"
+                    className={`flex flex-col items-center gap-3 ${compact ? 'p-2' : 'p-5'} bg-teal-600 text-white rounded-2xl hover:bg-teal-700 transition shadow-lg`}
                 >
                     <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                         <ClipboardList className="w-6 h-6" />
@@ -198,7 +279,7 @@ export default function AIAgent({ patientId, patientName }: { patientId: string;
 
                 <button
                     onClick={() => { setActiveModal('summary'); getSummary(); }}
-                    className="flex flex-col items-center gap-3 p-5 bg-teal-600 text-white rounded-2xl hover:bg-teal-700 transition shadow-lg"
+                    className={`flex flex-col items-center gap-3 ${compact ? 'p-2' : 'p-5'} bg-teal-600 text-white rounded-2xl hover:bg-teal-700 transition shadow-lg`}
                 >
                     <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                         <FileText className="w-6 h-6" />
@@ -208,7 +289,7 @@ export default function AIAgent({ patientId, patientName }: { patientId: string;
 
                 <button
                     onClick={() => { setActiveModal('insights'); getInsights(); }}
-                    className="flex flex-col items-center gap-3 p-5 bg-teal-600 text-white rounded-2xl hover:bg-teal-700 transition shadow-lg"
+                    className={`flex flex-col items-center gap-3 ${compact ? 'p-2' : 'p-5'} bg-teal-600 text-white rounded-2xl hover:bg-teal-700 transition shadow-lg`}
                 >
                     <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
                         <TrendingUp className="w-6 h-6" />
@@ -218,7 +299,7 @@ export default function AIAgent({ patientId, patientName }: { patientId: string;
 
                 <button
                     onClick={() => { setActiveModal('history'); getRecentSymptoms(); }}
-                    className="flex flex-col items-center gap-3 p-5 bg-white text-teal-600 border-2 border-teal-200 rounded-2xl hover:bg-teal-50 transition"
+                    className={`flex flex-col items-center gap-3 ${compact ? 'p-2' : 'p-5'} bg-white text-teal-600 border-2 border-teal-200 rounded-2xl hover:bg-teal-50 transition`}
                 >
                     <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center">
                         <History className="w-6 h-6" />
@@ -308,6 +389,75 @@ export default function AIAgent({ patientId, patientName }: { patientId: string;
                                                 <div className="flex items-center gap-2 text-red-700">
                                                     <AlertCircle className="w-5 h-5" />
                                                     <span>{result.error}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* AI Appointment Suggestion */}
+                                    {result?.success && (isAnalyzing || symptomAnalysis) && (
+                                        <div className="mt-4 p-4 rounded-xl bg-teal-50 border border-teal-200">
+                                            {isAnalyzing ? (
+                                                <div className="flex items-center gap-3 text-teal-700">
+                                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                                    <span>AI is analyzing symptom urgency...</span>
+                                                </div>
+                                            ) : symptomAnalysis && (
+                                                <div>
+                                                    {/* Urgency Badge */}
+                                                    <div className="flex items-center gap-2 mb-3">
+                                                        {symptomAnalysis.urgency === 'high' || symptomAnalysis.urgency === 'emergency' ? (
+                                                            <AlertCircle className="w-5 h-5 text-orange-600" />
+                                                        ) : (
+                                                            <Stethoscope className="w-5 h-5 text-teal-600" />
+                                                        )}
+                                                        <span className={`text-sm font-bold uppercase ${symptomAnalysis.urgency === 'emergency' ? 'text-red-700' :
+                                                            symptomAnalysis.urgency === 'high' ? 'text-orange-700' :
+                                                                symptomAnalysis.urgency === 'moderate' ? 'text-yellow-700' :
+                                                                    'text-green-700'
+                                                            }`}>
+                                                            {symptomAnalysis.urgency} Urgency
+                                                        </span>
+                                                    </div>
+
+                                                    <p className="text-sm text-teal-800 mb-3">{symptomAnalysis.recommendation}</p>
+
+                                                    {symptomAnalysis.suggest_appointment && onBookAppointment && (
+                                                        <button
+                                                            onClick={() => {
+                                                                onBookAppointment(lastLoggedSymptom);
+                                                                closeModal();
+                                                            }}
+                                                            className="w-full py-2.5 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition flex items-center justify-center gap-2"
+                                                        >
+                                                            <Calendar className="w-4 h-4" />
+                                                            Book Doctor Appointment
+                                                        </button>
+                                                    )}
+
+                                                    {['high', 'emergency'].includes(symptomAnalysis.urgency) && onDraftEmail && (
+                                                        <button
+                                                            onClick={() => {
+                                                                onDraftEmail(lastLoggedSymptom, symptomAnalysis.urgency);
+                                                                closeModal();
+                                                            }}
+                                                            className="w-full mt-3 py-2.5 bg-white border-2 border-red-100 text-red-700 font-semibold rounded-lg hover:bg-red-50 transition flex items-center justify-center gap-2"
+                                                        >
+                                                            <Mail className="w-5 h-5" />
+                                                            Draft Dr. Email
+                                                        </button>
+                                                    )}
+
+                                                    {symptomAnalysis.questions_to_ask.length > 0 && (
+                                                        <div className="mt-3 pt-3 border-t border-teal-200">
+                                                            <p className="text-xs font-medium text-teal-700 mb-1">Questions for the doctor:</p>
+                                                            <ul className="text-xs text-teal-600 space-y-0.5">
+                                                                {symptomAnalysis.questions_to_ask.slice(0, 2).map((q, i) => (
+                                                                    <li key={i}>• {q}</li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>

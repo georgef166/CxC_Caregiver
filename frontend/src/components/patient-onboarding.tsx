@@ -16,6 +16,7 @@ type Doctor = {
     name: string;
     specialty: string;
     phone: string;
+    email: string;
     is_primary: boolean;
 };
 
@@ -112,6 +113,7 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
             name: "",
             specialty: "",
             phone: "",
+            email: "",
             is_primary: data.doctors.length === 0,
         };
         updateData("doctors", [...data.doctors, newDoc]);
@@ -364,7 +366,7 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
                                             <Trash2 className="w-4 h-4" />
                                         </button>
                                     </div>
-                                    <div className="grid md:grid-cols-3 gap-3">
+                                    <div className="grid md:grid-cols-2 gap-3">
                                         <input
                                             type="text"
                                             value={doc.name}
@@ -385,6 +387,13 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
                                             onChange={(e) => updateDoctor(doc.id, "phone", e.target.value)}
                                             className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
                                             placeholder="Phone number"
+                                        />
+                                        <input
+                                            type="email"
+                                            value={doc.email || ""}
+                                            onChange={(e) => updateDoctor(doc.id, "email", e.target.value)}
+                                            className="rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:outline-none"
+                                            placeholder="Email address"
                                         />
                                     </div>
                                     <label className="flex items-center gap-2 mt-3 text-sm text-zinc-600">
