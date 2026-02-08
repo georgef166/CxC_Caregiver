@@ -3,3 +3,7 @@
 backend/venv/
 backend/__pycache__/
 *.pyc
+.env
+**/.venv/**
+**/.idea/**
+**/cxccaregiver-223983f52c92.json

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronRight, ChevronLeft, Plus, Trash2, Check, User, Pill, Stethoscope, Calendar, Phone, Shield } from "lucide-react";
+import { ChevronRight, ChevronLeft, Plus, Trash2, Check, User, Pill, Stethoscope, Calendar, Phone, Shield, Wallet, ExternalLink } from "lucide-react";
+import { signRegistration, getExplorerUrl } from "@/lib/solana";
 
 type Medication = {
     id: string;
@@ -68,6 +69,10 @@ interface PatientOnboardingProps {
 export default function PatientOnboarding({ user, onComplete }: PatientOnboardingProps) {
     const [currentStep, setCurrentStep] = useState(1);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [walletStatus, setWalletStatus] = useState<'idle' | 'signing' | 'signed' | 'error'>('idle');
+    const [txSignature, setTxSignature] = useState<string | null>(null);
+    const [walletAddress, setWalletAddress] = useState<string | null>(null);
+    const [walletError, setWalletError] = useState<string | null>(null);
 
     const [data, setData] = useState<OnboardingData>({
         full_name: user?.name || "",
@@ -166,6 +171,20 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
 
     const removeAllowedCaregiver = (id: string) => {
         updateData("allowed_caregivers", data.allowed_caregivers.filter(c => c.id !== id));
+    };
+
+    const handleWalletSign = async () => {
+        setWalletStatus('signing');
+        setWalletError(null);
+        try {
+            const result = await signRegistration(data.full_name);
+            setTxSignature(result.signature);
+            setWalletAddress(result.publicKey);
+            setWalletStatus('signed');
+        } catch (err: any) {
+            setWalletError(err.message || "Wallet signing failed");
+            setWalletStatus('error');
+        }
     };
 
     const handleSubmit = async () => {
@@ -550,6 +569,69 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
                                     <p className="text-zinc-600 text-sm">{data.allowed_caregivers.length} caregiver(s) pre-approved</p>
                                 </div>
                             </div>
+
+                            {/* Blockchain Verification */}
+                            <div className="bg-violet-50 border border-violet-200 rounded-xl p-5">
+                                <h4 className="font-semibold text-violet-900 mb-2 flex items-center gap-2">
+                                    <Wallet className="w-5 h-5" /> Blockchain Verification
+                                </h4>
+                                <p className="text-violet-700 text-sm mb-4">
+                                    Sign a transaction on Solana devnet to verify your registration on-chain.
+                                </p>
+
+                                {walletStatus === 'idle' && (
+                                    <button
+                                        onClick={handleWalletSign}
+                                        className="px-5 py-2.5 bg-violet-600 text-white font-medium rounded-lg hover:bg-violet-700 transition flex items-center gap-2"
+                                    >
+                                        <Wallet className="w-4 h-4" /> Connect Wallet & Sign
+                                    </button>
+                                )}
+
+                                {walletStatus === 'signing' && (
+                                    <div className="flex items-center gap-2 text-violet-700">
+                                        <div className="w-4 h-4 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+                                        Waiting for wallet signature...
+                                    </div>
+                                )}
+
+                                {walletStatus === 'signed' && txSignature && (
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2 text-green-700 font-medium">
+                                            <Check className="w-4 h-4" /> Transaction signed successfully
+                                        </div>
+                                        <div className="bg-white rounded-lg p-3 border border-violet-100">
+                                            <p className="text-xs text-zinc-500 mb-1">Transaction ID</p>
+                                            <p className="text-sm font-mono text-zinc-800 break-all">{txSignature}</p>
+                                        </div>
+                                        {walletAddress && (
+                                            <p className="text-xs text-zinc-500">
+                                                Wallet: {walletAddress.slice(0, 4)}...{walletAddress.slice(-4)}
+                                            </p>
+                                        )}
+                                        <a
+                                            href={getExplorerUrl(txSignature)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1 text-sm text-violet-600 hover:text-violet-800 font-medium"
+                                        >
+                                            View on Solana Explorer <ExternalLink className="w-3 h-3" />
+                                        </a>
+                                    </div>
+                                )}
+
+                                {walletStatus === 'error' && (
+                                    <div className="space-y-2">
+                                        <p className="text-red-600 text-sm">{walletError}</p>
+                                        <button
+                                            onClick={handleWalletSign}
+                                            className="px-4 py-2 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700 transition"
+                                        >
+                                            Try Again
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
 
@@ -574,8 +656,8 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
                         ) : (
                             <button
                                 onClick={handleSubmit}
-                                disabled={isSubmitting}
-                                className="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition disabled:opacity-50 flex items-center gap-2"
+                                disabled={isSubmitting || walletStatus !== 'signed'}
+                                className="px-8 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                             >
                                 {isSubmitting ? "Saving..." : "Complete Setup"} <Check className="w-5 h-5" />
                             </button>

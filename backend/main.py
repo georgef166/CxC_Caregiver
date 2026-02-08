@@ -9,6 +9,8 @@ from pydantic import BaseModel
 from typing import List, Optional
 import sys
 import os
+from agent import run, AgentRequest
+import uvicorn
 
 # Add parent directory to path to import modules
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
@@ -394,7 +396,12 @@ def health_check():
         }
     }
 
+@app.post("/agent")
+async def communicate_agent(request: AgentRequest):
+    res = await run(prompt=request.prompt)
+    return {"success": True, "response": res}
+
+
 
 if __name__ == "__main__":
-    import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
