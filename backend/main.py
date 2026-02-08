@@ -29,7 +29,6 @@ app = FastAPI(
     description="AI-powered email management system with Gemini AI",
     version="1.0.0"
 )
-
 # CORS middleware for frontend access
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001").split(",")
 app.add_middleware(
@@ -839,6 +838,7 @@ def dismiss_task(task_id: str):
     
     task.status = "dismissed"
     return {"success": True}
+
 
 
 if __name__ == "__main__":
