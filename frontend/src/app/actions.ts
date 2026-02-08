@@ -177,7 +177,7 @@ export async function findPatientByCode(inviteCode: string) {
         const { data: patient } = await supabaseAdmin
             .from('profiles')
             .select('id, full_name, role')
-            .eq('invite_code', inviteCode)
+            .eq('invite_code', inviteCode.toLowerCase())
             .single();
 
         if (!patient) return { success: false, error: "Patient not found." };
@@ -253,7 +253,7 @@ export async function completePatientOnboarding(user: any, data: {
     diagnosis_year: number | null;
     diagnosis_details: string;
     medications: Array<{ name: string; dosage: string; frequency: string; is_current: boolean }>;
-    doctors: Array<{ name: string; specialty: string; phone: string; is_primary: boolean }>;
+    doctors: Array<{ name: string; specialty: string; phone: string; email?: string; is_primary: boolean }>;
     emergency_contacts: Array<{ name: string; relationship: string; phone: string }>;
     allowed_caregivers: Array<{ caregiver_code: string; nickname: string }>;
 }) {
@@ -341,6 +341,7 @@ export async function completePatientOnboarding(user: any, data: {
                     name: d.name,
                     specialty: d.specialty,
                     phone: d.phone,
+                    email: d.email || null,
                     is_primary: d.is_primary,
                 }));
 
@@ -452,7 +453,7 @@ export async function linkPatientToCaregiverTwoWay(
         const { data: patient } = await supabaseAdmin
             .from('profiles')
             .select('id, full_name, role')
-            .eq('invite_code', patientInviteCode)
+            .eq('invite_code', patientInviteCode.toLowerCase())
             .single();
 
         if (!patient) return { success: false, error: "Patient not found with that code" };

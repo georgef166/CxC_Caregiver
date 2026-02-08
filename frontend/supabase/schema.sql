@@ -152,3 +152,20 @@ create policy "Enable update for everyone (dev)" on public.profiles
 
 create policy "Enable select for everyone (dev)" on public.profiles
   for select using (true);
+
+-- =============================================
+-- SYMPTOM LOGS TABLE (for AI Agent)
+-- =============================================
+create table public.symptom_logs (
+  id uuid default uuid_generate_v4() primary key,
+  patient_id uuid references public.profiles(id) on delete cascade not null,
+  caregiver_id uuid references public.profiles(id) on delete set null,
+  symptom text not null,
+  severity text check (severity in ('mild', 'moderate', 'severe')) default 'moderate',
+  notes text,
+  logged_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.symptom_logs enable row level security;
+create policy "Enable all for everyone (dev)" on public.symptom_logs for all using (true) with check (true);
