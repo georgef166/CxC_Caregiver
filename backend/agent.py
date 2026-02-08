@@ -11,8 +11,12 @@ from googleapiclient.discovery import build
 import datetime
 from google import genai
 from google.genai import types
+from pydantic import BaseModel
 from utils.agent_ext import use_extended_tools
 
+
+class AgentRequest(BaseModel):
+    prompt: str
 
 load_dotenv()
 
