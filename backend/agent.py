@@ -11,6 +11,7 @@ from googleapiclient.discovery import build
 import datetime
 from google import genai
 from google.genai import types
+from utils.agent_ext import use_extended_tools
 import asyncio
 
 load_dotenv()
@@ -18,9 +19,8 @@ load_dotenv()
 
 class CaregiverAgent:
     def __init__(self,
-                 prompt: str,
-                 chat_id: int = 8323072245):
-        self.chat_id = chat_id
+                 prompt: str, ):
+        self.chat_id = os.environ['CHAT_ID']
         self.prompt = prompt
         self.system_prompt = \
             """
@@ -144,7 +144,47 @@ class CaregiverAgent:
             }
         }
 
-        self.tools = [message_tool, email_tool, book_event_tool]
+        ext_tool = {
+            "name": "call_tool_ext",
+            "description": """
+            Executes an external Google built-in tool.
+            This function serves as a bridge to utilize
+            Google's native capabilities such as Search, Maps, and URL context processing.
+            """,
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "string",
+                        "description": """
+                            The query string, location, or URL to be processed by the tool. Append: 'USE <tool name>' 
+                            to the content
+                        """
+                    }
+                },
+                "required": [
+                    "tool_name"
+                ]
+            }
+        }
+
+        ext_tool = {
+            "name": "call_tool_ext",
+            "description": """Executes an external Google built-in tool (Search, Maps, or URL context).
+                            This acts as a bridge to Google's native capabilities.""",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "content": {
+                        "type": "string",
+                        "description": """The prompt you were currently provided with,
+                                        append 'USE <tool name>' to the content"""
+                    }
+                }
+            }
+        }
+
+        self.tools = [message_tool, email_tool, book_event_tool, ext_tool]
 
     @staticmethod
     def send_email(
@@ -300,6 +340,23 @@ class CaregiverAgent:
             print(f"Ensure that {calendar_id} has shared 'Make Changes' access with the service account.")
             raise
 
+    def call_tool_ext(self, content: str = None):
+        """
+        Executes an external Google built-in tool.
+
+        This function serves as a bridge to utilize Google's native capabilities
+        such as Search, Maps, and URL context processing.
+
+        Args:
+            content (str, optional): The query string, location, or URL
+                to be processed by the tool. Defaults to None.
+
+        Returns:
+            Any: The raw response data from the utility execution.
+        """
+        # Assuming the implementation logic remains the same
+        return use_extended_tools(content)
+
     def call_function(self, tool_name: str, *args, **kwargs):
         """
         Dynamically call any method of this class, whether static or instance.
@@ -312,55 +369,46 @@ async def run(prompt: str):
     agent = CaregiverAgent(prompt=prompt)
     api_key = os.environ["API_KEY"]
     client = genai.Client(api_key=api_key)
-    # Add tools
-    grounding_tool = types.Tool(
-        google_search=types.GoogleSearch()
-    )
-    maps_tool = types.Tool(
-        google_maps=types.GoogleMaps()
-    )
-    url_context_tool = types.Tool(
-        url_context=types.UrlContext()
-    )
+
     custom_tools = types.Tool(
         function_declarations=[types.FunctionDeclaration(**tool) for tool in agent.tools]
     )
 
-    built_in_tools = [grounding_tool, url_context_tool]
-    tools = [custom_tools]
-    # AFC is not supported with custom-tools
-    automatic_function_calling = types.AutomaticFunctionCallingConfig(disable=False)
-    # Add config
     config = types.GenerateContentConfig(
-        tools=tools,
+        tools=[custom_tools],
         system_instruction=agent.system_prompt,
-        automatic_function_calling=automatic_function_calling
-    )
-    response = await client.aio.models.generate_content(
-        model="gemini-3-flash-preview",
-        contents=prompt,
-        config=config
     )
 
-    # for output in interaction.outputs:
-    #     if output.type == "function_call":
-    #         print(f"Tool Call: {output.name}({output.arguments})")
-    #         # Execute tool
-    #         result = agent.call_function(**output.arguments)
-    #
-    #         # Send result back
-    #         interaction = client.interactions.create(
-    #             model="gemini-3-flash-preview",
-    #             previous_interaction_id=interaction.id,
-    #             input=[{
-    #                 "type": "function_result",
-    #                 "name": output.name,
-    #                 "call_id": output.id,
-    #                 "result": result
-    #             }]
-    #         )
-    return f"Response: {response}"
+    contents = [types.Content(role="user", parts=[types.Part(text=prompt)])]
+
+    while True:
+        response = await client.aio.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=contents,
+            config=config,
+        )
+
+        part = response.candidates[0].content.parts[0]
+
+        if part.function_call:
+            fc = part.function_call
+            # Append the model's function call to the conversation
+            contents.append(response.candidates[0].content)
+
+            # Execute the function
+            result = agent.call_function(fc.name, **fc.args)
+
+            # Send the result back to the model
+            contents.append(types.Content(
+                role="user",
+                parts=[types.Part(function_response=types.FunctionResponse(
+                    name=fc.name,
+                    response={"result": str(result)},
+                ))],
+            ))
+        else:
+            return response.text
 
 
-res = asyncio.run(run(prompt="This is a test"))
+res = asyncio.run(run(prompt="execute the send_message tool saying that this is a test"))
 print(res)
