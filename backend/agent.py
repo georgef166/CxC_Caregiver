@@ -12,7 +12,7 @@ import datetime
 from google import genai
 from google.genai import types
 from utils.agent_ext import use_extended_tools
-import asyncio
+
 
 load_dotenv()
 
