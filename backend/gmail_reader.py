@@ -13,7 +13,11 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 # If modifying these scopes, delete the file token.json.
-SCOPES = ['https://www.googleapis.com/auth/gmail.readonly']
+SCOPES = [
+    'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/gmail.modify',
+    'https://www.googleapis.com/auth/calendar'
+]
 
 
 class GmailReader:
@@ -55,6 +59,7 @@ class GmailReader:
             with open(self.token_path, 'w') as token:
                 token.write(creds.to_json())
         
+        self.creds = creds
         self.service = build('gmail', 'v1', credentials=creds)
     
     def get_unread_emails(self, max_results: int = 10) -> List[Dict]:

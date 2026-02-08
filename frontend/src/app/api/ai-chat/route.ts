@@ -25,7 +25,7 @@ async function callAI(prompt: string): Promise<string> {
             "Authorization": `Bearer ${apiKey}`,
             "Content-Type": "application/json",
             "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-            "X-Title": "CareGlobe"
+            "X-Title": "CareLink"
         },
         body: JSON.stringify({
             model: "google/gemini-2.0-flash-001",

@@ -10,7 +10,7 @@ from mcp.server import Server
 from mcp.types import Tool, TextContent, ImageContent, EmbeddedResource
 from gmail_reader import GmailReader
 from gemini_reply import GeminiReplyGenerator
-from agents import send_email
+from agent import send_email
 
 # Initialize the MCP server
 app = Server("email-assistant")

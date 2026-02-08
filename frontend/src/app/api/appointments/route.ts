@@ -17,6 +17,9 @@ export async function POST(request: NextRequest) {
             case "calendar-invite":
                 endpoint = "/appointments/calendar-invite";
                 break;
+            case "google-calendar":
+                endpoint = "/appointments/google-calendar";
+                break;
             default:
                 return NextResponse.json(
                     { success: false, error: "Unknown action" },

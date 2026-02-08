@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Calendar, Clock, MapPin, User, Plus, Check, X, Loader2, Trash2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 type Doctor = {
     id: string;
@@ -28,20 +29,34 @@ type ScheduleManagerProps = {
 };
 
 export default function ScheduleManager({ patientId, patientName, patientEmail, doctors }: ScheduleManagerProps) {
-    const [appointments, setAppointments] = useState<Appointment[]>(() => {
-        if (typeof window !== 'undefined') {
-            const saved = localStorage.getItem(`appointments_${patientId}`);
-            return saved ? JSON.parse(saved) : [];
-        }
-        return [];
-    });
+    const [appointments, setAppointments] = useState<Appointment[]>([]);
 
-    // Save to local storage whenever appointments change
+    // Fetch appointments from Supabase on mount
     useEffect(() => {
-        if (typeof window !== 'undefined') {
-            localStorage.setItem(`appointments_${patientId}`, JSON.stringify(appointments));
-        }
-    }, [appointments, patientId]);
+        const fetchAppointments = async () => {
+            try {
+                const { data, error } = await supabase
+                    .from('appointments')
+                    .select('*')
+                    .eq('patient_id', patientId)
+                    .order('appointment_date', { ascending: true });
+                if (data && !error) {
+                    setAppointments(data.map((a: any) => ({
+                        id: a.id,
+                        title: a.title,
+                        doctorName: a.doctor_name,
+                        date: a.appointment_date,
+                        time: a.appointment_time || '',
+                        location: a.location || '',
+                        notes: a.notes || ''
+                    })));
+                }
+            } catch (err) {
+                console.error('Error fetching appointments:', err);
+            }
+        };
+        fetchAppointments();
+    }, [patientId]);
 
     const [isAdding, setIsAdding] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -68,11 +83,9 @@ export default function ScheduleManager({ patientId, patientName, patientEmail, 
         setNotification(null);
 
         try {
-            const selectedDoctor = doctors.find(d => d.id === newAppt.doctorId);
-            const doctorName = selectedDoctor ? selectedDoctor.name : "Unknown Doctor";
-
             // Format datetime for email
             const dateTimeStr = `${newAppt.date}T${newAppt.time}:00`;
+            const calDoctorName = doctors.find(d => d.id === newAppt.doctorId)?.name || "Doctor";
 
             // Send Calendar Invite if requested
             if (newAppt.sendInvite && patientEmail) {
@@ -83,7 +96,7 @@ export default function ScheduleManager({ patientId, patientName, patientEmail, 
                         action: "calendar-invite",
                         patient_email: patientEmail,
                         patient_name: patientName,
-                        doctor_name: doctorName,
+                        doctor_name: calDoctorName,
                         appointment_datetime: dateTimeStr,
                         location: newAppt.location,
                         notes: newAppt.notes
@@ -96,11 +109,32 @@ export default function ScheduleManager({ patientId, patientName, patientEmail, 
                 }
             }
 
-            // Add to local list
+            // Add to Supabase
+            const selectedDoctor = doctors.find(d => d.id === newAppt.doctorId);
+            const doctorName = selectedDoctor ? selectedDoctor.name : undefined;
+
+            const { data: inserted, error: insertError } = await supabase
+                .from('appointments')
+                .insert({
+                    patient_id: patientId,
+                    doctor_id: newAppt.doctorId || null,
+                    title: newAppt.title,
+                    appointment_date: newAppt.date,
+                    appointment_time: newAppt.time,
+                    location: newAppt.location || null,
+                    notes: newAppt.notes || null,
+                    doctor_name: doctorName || null,
+                    status: 'scheduled'
+                })
+                .select()
+                .single();
+
+            if (insertError) throw new Error(insertError.message);
+
             const appointment: Appointment = {
-                id: crypto.randomUUID(),
+                id: inserted.id,
                 title: newAppt.title,
-                doctorName: selectedDoctor?.name,
+                doctorName,
                 date: newAppt.date,
                 time: newAppt.time,
                 location: newAppt.location,
@@ -111,7 +145,28 @@ export default function ScheduleManager({ patientId, patientName, patientEmail, 
                 new Date(a.date + 'T' + a.time).getTime() - new Date(b.date + 'T' + b.time).getTime()
             ));
 
-            setNotification({ type: 'success', message: "Appointment added & calendar invite sent!" });
+            // Add to caregiver's Google Calendar
+            let calendarAdded = false;
+            try {
+                const gcalRes = await fetch("/api/appointments", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        action: "google-calendar",
+                        summary: `${newAppt.title} - Dr. ${calDoctorName}`,
+                        appointment_datetime: dateTimeStr,
+                        duration_minutes: 120,
+                        description: newAppt.notes || `Appointment for ${patientName} with Dr. ${calDoctorName}`,
+                        location: newAppt.location || undefined
+                    }),
+                });
+                const gcalResult = await gcalRes.json();
+                calendarAdded = gcalResult.success;
+            } catch (e) {
+                console.error("Google Calendar sync failed:", e);
+            }
+
+            setNotification({ type: 'success', message: calendarAdded ? "Appointment added, calendar invite sent & synced to Google Calendar!" : "Appointment added & calendar invite sent! (Google Calendar sync unavailable)" });
             setIsAdding(false);
             setNewAppt({
                 title: "",
@@ -130,8 +185,13 @@ export default function ScheduleManager({ patientId, patientName, patientEmail, 
         }
     };
 
-    const handleDelete = (id: string) => {
-        setAppointments(prev => prev.filter(a => a.id !== id));
+    const handleDelete = async (id: string) => {
+        try {
+            await supabase.from('appointments').delete().eq('id', id);
+            setAppointments(prev => prev.filter(a => a.id !== id));
+        } catch (err) {
+            console.error('Error deleting appointment:', err);
+        }
     };
 
     return (

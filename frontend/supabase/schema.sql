@@ -15,6 +15,7 @@ create table public.profiles (
   date_of_birth date,
   diagnosis_year int,
   diagnosis_details text, -- More detailed diagnosis info
+  blood_type text, -- e.g. A+, O-, AB+
   bio text,
   phone text,
   address text,
@@ -75,6 +76,7 @@ create table public.appointments (
   appointment_date date not null,
   appointment_time time,
   location text,
+  doctor_name text, -- Denormalized for quick display
   is_recurring boolean default false,
   recurrence_pattern text, -- e.g., "weekly", "monthly"
   notes text,
@@ -138,20 +140,22 @@ create policy "Enable all for everyone (dev)" on public.caregiver_patient_links 
 -- =============================================
 -- PROFILE POLICIES
 -- =============================================
-create policy "Users can view their own profile" on public.profiles
-  for select using (auth0_id = current_setting('request.jwt.claim.sub', true));
-
-create policy "Users can update their own profile" on public.profiles
-  for update using (auth0_id = current_setting('request.jwt.claim.sub', true));
-
-create policy "Enable insert for everyone (dev)" on public.profiles
+-- Insert: anyone (for onboarding)
+create policy "profiles_insert" on public.profiles
   for insert with check (true);
 
-create policy "Enable update for everyone (dev)" on public.profiles
-  for update using (true);
+-- Select: own profile
+create policy "profiles_select_own" on public.profiles
+  for select using (auth0_id = current_setting('request.jwt.claim.sub', true));
 
-create policy "Enable select for everyone (dev)" on public.profiles
-  for select using (true);
+-- Update: own profile
+create policy "profiles_update_own" on public.profiles
+  for update using (auth0_id = current_setting('request.jwt.claim.sub', true));
+
+-- Service role bypass (for server actions using SUPABASE_SERVICE_ROLE_KEY)
+create policy "profiles_service_role" on public.profiles
+  for all using (current_setting('role', true) = 'service_role')
+  with check (current_setting('role', true) = 'service_role');
 
 -- =============================================
 -- SYMPTOM LOGS TABLE (for AI Agent)

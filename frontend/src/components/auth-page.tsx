@@ -169,7 +169,7 @@ export default function AuthPage({ onLogin }: { onLogin?: () => void }) {
 
                     {/* Terms */}
                     <p className="text-xs text-gray-400 text-center mt-6">
-                        By continuing, you agree to CareGlobe's{" "}
+                        By continuing, you agree to CareLink's{" "}
                         <a href="#" className="text-teal-600 hover:underline">Terms of Service</a> and{" "}
                         <a href="#" className="text-teal-600 hover:underline">Privacy Policy</a>
                     </p>

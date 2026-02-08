@@ -44,6 +44,29 @@ class AppointmentService:
 Symptom reported: {symptom}
 {context_str}
 
+CRITICAL: For the following symptoms, ALWAYS set urgency to "emergency":
+- Chest pain, tightness, or pressure
+- Difficulty breathing or shortness of breath
+- Signs of stroke (facial drooping, arm weakness, speech difficulty)
+- Severe allergic reaction / anaphylaxis
+- Loss of consciousness, fainting, unresponsiveness
+- Severe bleeding or head injury
+- Sudden severe headache ("worst headache of my life")
+- Choking or inability to swallow
+- Seizure (especially first-time)
+- Suicidal thoughts or self-harm
+
+For these symptoms, ALWAYS set urgency to "high":
+- High fever (above 103°F / 39.4°C)
+- Persistent vomiting or inability to keep fluids down
+- Sudden vision changes
+- Severe abdominal pain
+- Signs of infection (red streaks, warmth, fever with wound)
+- Falls with possible fracture
+- Medication adverse reaction
+- Confusion or disorientation (new onset)
+- Severe tremors or rigidity (in Parkinson's patients)
+
 Analyze this symptom and provide:
 1. URGENCY: One of [low, moderate, high, emergency]
 2. RECOMMENDATION: A brief explanation of what the caregiver should do
@@ -61,7 +84,7 @@ QUESTIONS_TO_ASK:
 - [question 2]
 - [question 3]
 
-Be helpful but conservative - when in doubt, suggest medical consultation."""
+Be helpful but conservative - when in doubt about serious symptoms, escalate to higher urgency."""
 
         try:
             response = self.client.models.generate_content(
@@ -236,7 +259,7 @@ CareLink - Caregiver Assistant"""
         # Generate iCal format
         event_uid = f"carelink-{datetime.now().strftime('%Y%m%d%H%M%S')}@carelink.app"
         event_start = appointment_datetime.strftime('%Y%m%dT%H%M%S')
-        event_end = (appointment_datetime + timedelta(hours=1)).strftime('%Y%m%dT%H%M%S')
+        event_end = (appointment_datetime + timedelta(hours=2)).strftime('%Y%m%dT%H%M%S')
         
         ical_content = f"""BEGIN:VCALENDAR
 VERSION:2.0
