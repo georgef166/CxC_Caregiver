@@ -202,23 +202,24 @@ export default function EmailAssistant({ patientName, doctorEmails = [], draftDa
                         {emails.map((email) => (
                             <div
                                 key={email.id}
-                                className="p-4 border border-gray-100 rounded-xl hover:border-teal-200 hover:bg-teal-50/30 transition cursor-pointer"
+                                className="p-3 border-b border-gray-50 last:border-0 hover:bg-gray-50 transition cursor-pointer flex items-center justify-between group"
                                 onClick={() => setSelectedEmail(email)}
                             >
-                                <div className="flex items-start justify-between mb-2">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                                            <User className="w-4 h-4 text-gray-500" />
-                                        </div>
-                                        <span className="font-medium text-gray-900 text-sm">{email.sender.split('<')[0].trim()}</span>
+                                <div className="flex items-center gap-3 overflow-hidden">
+                                    <div className="w-8 h-8 bg-gray-100 rounded-full flex-shrink-0 flex items-center justify-center group-hover:bg-teal-50 group-hover:text-teal-600 transition">
+                                        <User className="w-4 h-4 text-gray-500 group-hover:text-teal-600" />
                                     </div>
-                                    <div className="flex items-center gap-1 text-xs text-gray-400">
-                                        <Clock className="w-3 h-3" />
-                                        {new Date(email.date).toLocaleDateString()}
+                                    <div className="min-w-0">
+                                        <p className="font-medium text-gray-900 text-sm truncate">{email.sender.split('<')[0].trim()}</p>
+                                        {(patientName && (email.subject + email.snippet).toLowerCase().includes(patientName.toLowerCase()) ||
+                                            ['patient', 'appoint', 'health', 'care', 'urgent', 'lab', 'test', 'result'].some(k => (email.subject + email.snippet).toLowerCase().includes(k))) && (
+                                                <p className="text-xs font-medium text-teal-600 truncate">{email.subject}</p>
+                                            )}
                                     </div>
                                 </div>
-                                <p className="font-semibold text-gray-800 text-sm mb-1">{email.subject}</p>
-                                <p className="text-xs text-gray-500 line-clamp-2">{email.snippet}</p>
+                                <div className="text-xs text-gray-400 flex-shrink-0 ml-2">
+                                    {new Date(email.date).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })}
+                                </div>
                             </div>
                         ))}
                     </div>

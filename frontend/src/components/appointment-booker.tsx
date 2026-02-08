@@ -114,11 +114,30 @@ export default function AppointmentBooker({
                 }),
             });
             const data = await response.json();
-            setBookingResult(data);
-            setStep('result');
+
+            // Also add to caregiver's Google Calendar
             if (data.success) {
+                try {
+                    await fetch("/api/appointments", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            action: "google-calendar",
+                            summary: `Appointment: ${patientName} with Dr. ${selectedDoctor.name}`,
+                            appointment_datetime: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+                            duration_minutes: 120,
+                            description: `Symptom: ${symptom}\nUrgency: ${analysis?.urgency || "moderate"}\nTimeframe: ${preferredTimeframe}`,
+                        }),
+                    });
+                    data.message = (data.message || "") + " — also added to your Google Calendar";
+                } catch {
+                    // Calendar sync is best-effort, don't fail the whole booking
+                }
                 onSuccess();
             }
+
+            setBookingResult(data);
+            setStep('result');
         } catch (error) {
             setBookingResult({ success: false, message: "Failed to send appointment request" });
             setStep('result');

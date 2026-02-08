@@ -83,6 +83,11 @@ export async function updatePatientProfile({
         bio?: string;
         diagnosis_year?: number;
         invite_code?: string;
+        date_of_birth?: string;
+        blood_type?: string;
+        diagnosis_details?: string;
+        phone?: string;
+        address?: string;
     };
 }) {
     if (!user || !user.sub) {

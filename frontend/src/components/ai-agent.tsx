@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { ClipboardList, FileText, TrendingUp, Mic, X, Loader2, Send, CheckCircle, AlertCircle, History, Calendar, Stethoscope, Mail } from "lucide-react";
+import { ClipboardList, FileText, TrendingUp, Mic, X, Loader2, Send, CheckCircle, AlertCircle, History, Calendar, Stethoscope, Mail, MessageCircle, Bot, Zap, Phone, ShieldAlert, Siren } from "lucide-react";
 
 type SymptomLog = {
     id: string;
@@ -57,6 +57,15 @@ type Doctor = {
     is_primary: boolean;
 };
 
+type EmergencyContact = {
+    id: string;
+    name: string;
+    relationship: string;
+    phone: string;
+    email?: string;
+    is_primary: boolean;
+};
+
 type SymptomAnalysis = {
     symptom: string;
     urgency: string;
@@ -66,16 +75,18 @@ type SymptomAnalysis = {
     questions_to_ask: string[];
 };
 
-export default function AIAgent({ patientId, patientName, doctors = [], onBookAppointment, onDraftEmail, forceOpenAction, compact = false }: {
+export default function AIAgent({ patientId, patientName, doctors = [], emergencyContacts = [], onBookAppointment, onDraftEmail, onSendEmergencyEmail, forceOpenAction, compact = false }: {
     patientId: string;
     patientName: string;
     doctors?: Doctor[];
+    emergencyContacts?: EmergencyContact[];
     onBookAppointment?: (symptom: string) => void;
     onDraftEmail?: (symptom: string, urgency: string) => void;
+    onSendEmergencyEmail?: (symptom: string, urgency: string) => void;
     forceOpenAction?: 'symptom' | 'summary' | 'insights' | null;
     compact?: boolean;
 }) {
-    const [activeModal, setActiveModal] = useState<'symptom' | 'summary' | 'insights' | 'history' | null>(null);
+    const [activeModal, setActiveModal] = useState<'symptom' | 'summary' | 'insights' | 'history' | 'agent' | null>(null);
 
     // React to external triggers (e.g. Quick Actions)
     useEffect(() => {
@@ -102,6 +113,47 @@ export default function AIAgent({ patientId, patientName, doctors = [], onBookAp
     const [symptomAnalysis, setSymptomAnalysis] = useState<SymptomAnalysis | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [lastLoggedSymptom, setLastLoggedSymptom] = useState("");
+
+    // Autonomous Agent Chat state
+    const [agentInput, setAgentInput] = useState("");
+    const [agentMessages, setAgentMessages] = useState<{ role: 'user' | 'agent'; text: string; actions?: any[] }[]>([]);
+    const [isAgentLoading, setIsAgentLoading] = useState(false);
+
+    const sendAgentMessage = async () => {
+        if (!agentInput.trim()) return;
+        const userMsg = agentInput.trim();
+        setAgentInput("");
+        setAgentMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+        setIsAgentLoading(true);
+
+        try {
+            const response = await fetch("/api/agent", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    prompt: userMsg,
+                    patient_context: {
+                        name: patientName,
+                        doctors: doctors.map(d => ({
+                            name: d.name,
+                            specialty: d.specialty,
+                            email: d.email || "",
+                        })),
+                    }
+                }),
+            });
+            const data = await response.json();
+            setAgentMessages(prev => [...prev, {
+                role: 'agent',
+                text: data.response || data.error || "No response",
+                actions: data.actions_taken || []
+            }]);
+        } catch (error) {
+            setAgentMessages(prev => [...prev, { role: 'agent', text: "Failed to reach the agent. Is the backend running?" }]);
+        } finally {
+            setIsAgentLoading(false);
+        }
+    };
 
     const logSymptom = async () => {
         if (!symptomInput.trim()) return;
@@ -306,19 +358,31 @@ export default function AIAgent({ patientId, patientName, doctors = [], onBookAp
                     </div>
                     <span className="font-semibold">Symptom Log</span>
                 </button>
+
+                <button
+                    onClick={() => { setActiveModal('agent'); }}
+                    className={`flex flex-col items-center gap-3 ${compact ? 'p-2' : 'p-5'} bg-gradient-to-br from-violet-600 to-teal-600 text-white rounded-2xl hover:from-violet-700 hover:to-teal-700 transition shadow-lg col-span-full`}
+                >
+                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                        <Bot className="w-6 h-6" />
+                    </div>
+                    <span className="font-semibold">Ask CareLink AI</span>
+                    <span className="text-[10px] opacity-80 -mt-2">Email · Calendar · Search · Maps</span>
+                </button>
             </div>
 
             {/* Modal Overlay */}
             {activeModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl max-w-xl w-full max-h-[80vh] overflow-hidden shadow-2xl">
+                    <div className={`bg-white rounded-2xl w-full max-h-[80vh] overflow-hidden shadow-2xl ${activeModal === 'agent' ? 'max-w-2xl' : 'max-w-xl'}`}>
                         {/* Modal Header */}
-                        <div className="px-6 py-4 bg-teal-600 text-white flex items-center justify-between">
+                        <div className={`px-6 py-4 text-white flex items-center justify-between ${activeModal === 'agent' ? 'bg-gradient-to-r from-violet-600 to-teal-600' : 'bg-teal-600'}`}>
                             <h2 className="text-lg font-bold flex items-center gap-2">
                                 {activeModal === 'symptom' && <><ClipboardList className="w-5 h-5" /> Log Symptom</>}
                                 {activeModal === 'summary' && <><FileText className="w-5 h-5" /> Care Summary</>}
                                 {activeModal === 'insights' && <><TrendingUp className="w-5 h-5" /> AI Insights</>}
                                 {activeModal === 'history' && <><History className="w-5 h-5" /> Symptom History</>}
+                                {activeModal === 'agent' && <><Bot className="w-5 h-5" /> CareLink AI Agent</>}
                             </h2>
                             <button onClick={closeModal} className="p-1 hover:bg-white/20 rounded-lg transition">
                                 <X className="w-5 h-5" />
@@ -394,70 +458,208 @@ export default function AIAgent({ patientId, patientName, doctors = [], onBookAp
                                         </div>
                                     )}
 
-                                    {/* AI Appointment Suggestion */}
+                                    {/* AI Symptom Analysis & Emergency Actions */}
                                     {result?.success && (isAnalyzing || symptomAnalysis) && (
-                                        <div className="mt-4 p-4 rounded-xl bg-teal-50 border border-teal-200">
+                                        <div className={`mt-4 rounded-xl border-2 ${
+                                            symptomAnalysis?.urgency === 'emergency' ? 'bg-red-50 border-red-300 animate-pulse-once' :
+                                            symptomAnalysis?.urgency === 'high' ? 'bg-orange-50 border-orange-300' :
+                                            'bg-teal-50 border-teal-200'
+                                        }`}>
                                             {isAnalyzing ? (
-                                                <div className="flex items-center gap-3 text-teal-700">
+                                                <div className="flex items-center gap-3 text-teal-700 p-4">
                                                     <Loader2 className="w-5 h-5 animate-spin" />
                                                     <span>AI is analyzing symptom urgency...</span>
                                                 </div>
                                             ) : symptomAnalysis && (
                                                 <div>
-                                                    {/* Urgency Badge */}
-                                                    <div className="flex items-center gap-2 mb-3">
-                                                        {symptomAnalysis.urgency === 'high' || symptomAnalysis.urgency === 'emergency' ? (
-                                                            <AlertCircle className="w-5 h-5 text-orange-600" />
-                                                        ) : (
-                                                            <Stethoscope className="w-5 h-5 text-teal-600" />
-                                                        )}
-                                                        <span className={`text-sm font-bold uppercase ${symptomAnalysis.urgency === 'emergency' ? 'text-red-700' :
-                                                            symptomAnalysis.urgency === 'high' ? 'text-orange-700' :
-                                                                symptomAnalysis.urgency === 'moderate' ? 'text-yellow-700' :
-                                                                    'text-green-700'
-                                                            }`}>
-                                                            {symptomAnalysis.urgency} Urgency
-                                                        </span>
-                                                    </div>
-
-                                                    <p className="text-sm text-teal-800 mb-3">{symptomAnalysis.recommendation}</p>
-
-                                                    {symptomAnalysis.suggest_appointment && onBookAppointment && (
-                                                        <button
-                                                            onClick={() => {
-                                                                onBookAppointment(lastLoggedSymptom);
-                                                                closeModal();
-                                                            }}
-                                                            className="w-full py-2.5 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition flex items-center justify-center gap-2"
-                                                        >
-                                                            <Calendar className="w-4 h-4" />
-                                                            Book Doctor Appointment
-                                                        </button>
-                                                    )}
-
-                                                    {['high', 'emergency'].includes(symptomAnalysis.urgency) && onDraftEmail && (
-                                                        <button
-                                                            onClick={() => {
-                                                                onDraftEmail(lastLoggedSymptom, symptomAnalysis.urgency);
-                                                                closeModal();
-                                                            }}
-                                                            className="w-full mt-3 py-2.5 bg-white border-2 border-red-100 text-red-700 font-semibold rounded-lg hover:bg-red-50 transition flex items-center justify-center gap-2"
-                                                        >
-                                                            <Mail className="w-5 h-5" />
-                                                            Draft Dr. Email
-                                                        </button>
-                                                    )}
-
-                                                    {symptomAnalysis.questions_to_ask.length > 0 && (
-                                                        <div className="mt-3 pt-3 border-t border-teal-200">
-                                                            <p className="text-xs font-medium text-teal-700 mb-1">Questions for the doctor:</p>
-                                                            <ul className="text-xs text-teal-600 space-y-0.5">
-                                                                {symptomAnalysis.questions_to_ask.slice(0, 2).map((q, i) => (
-                                                                    <li key={i}>• {q}</li>
-                                                                ))}
-                                                            </ul>
+                                                    {/* EMERGENCY BANNER */}
+                                                    {symptomAnalysis.urgency === 'emergency' && (
+                                                        <div className="bg-red-600 text-white px-4 py-3 rounded-t-xl flex items-center gap-3">
+                                                            <Siren className="w-6 h-6 flex-shrink-0 animate-bounce" />
+                                                            <div>
+                                                                <p className="font-bold text-sm">⚠️ EMERGENCY DETECTED</p>
+                                                                <p className="text-xs text-red-100">This symptom may require immediate medical attention</p>
+                                                            </div>
                                                         </div>
                                                     )}
+
+                                                    {/* HIGH URGENCY BANNER */}
+                                                    {symptomAnalysis.urgency === 'high' && (
+                                                        <div className="bg-orange-500 text-white px-4 py-3 rounded-t-xl flex items-center gap-3">
+                                                            <ShieldAlert className="w-5 h-5 flex-shrink-0" />
+                                                            <div>
+                                                                <p className="font-bold text-sm">HIGH URGENCY</p>
+                                                                <p className="text-xs text-orange-100">Prompt medical attention recommended</p>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    <div className="p-4">
+                                                        {/* Urgency Badge — for low/moderate */}
+                                                        {!['emergency', 'high'].includes(symptomAnalysis.urgency) && (
+                                                            <div className="flex items-center gap-2 mb-3">
+                                                                <Stethoscope className="w-5 h-5 text-teal-600" />
+                                                                <span className={`text-sm font-bold uppercase ${
+                                                                    symptomAnalysis.urgency === 'moderate' ? 'text-yellow-700' : 'text-green-700'
+                                                                }`}>
+                                                                    {symptomAnalysis.urgency} Urgency
+                                                                </span>
+                                                            </div>
+                                                        )}
+
+                                                        <p className={`text-sm mb-4 ${
+                                                            symptomAnalysis.urgency === 'emergency' ? 'text-red-800 font-medium' :
+                                                            symptomAnalysis.urgency === 'high' ? 'text-orange-800' :
+                                                            'text-teal-800'
+                                                        }`}>{symptomAnalysis.recommendation}</p>
+
+                                                        {/* EMERGENCY ACTIONS */}
+                                                        {symptomAnalysis.urgency === 'emergency' && (
+                                                            <div className="space-y-2 mb-4">
+                                                                {/* Call 911 */}
+                                                                <a
+                                                                    href="tel:911"
+                                                                    className="w-full py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition flex items-center justify-center gap-2 text-lg shadow-lg"
+                                                                >
+                                                                    <Phone className="w-5 h-5" />
+                                                                    Call 911
+                                                                </a>
+
+                                                                {/* Email Doctor Immediately */}
+                                                                {onSendEmergencyEmail && (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            onSendEmergencyEmail(lastLoggedSymptom, symptomAnalysis.urgency);
+                                                                        }}
+                                                                        className="w-full py-2.5 bg-red-100 text-red-800 font-semibold rounded-lg hover:bg-red-200 transition flex items-center justify-center gap-2 border border-red-300"
+                                                                    >
+                                                                        <Mail className="w-4 h-4" />
+                                                                        Email Doctor Immediately
+                                                                    </button>
+                                                                )}
+
+                                                                {/* Emergency Contacts */}
+                                                                {emergencyContacts.length > 0 && (
+                                                                    <div className="bg-white rounded-lg border border-red-200 p-3">
+                                                                        <p className="text-xs font-bold text-red-700 uppercase mb-2 flex items-center gap-1">
+                                                                            <Phone className="w-3 h-3" /> Emergency Contacts
+                                                                        </p>
+                                                                        <div className="space-y-2">
+                                                                            {emergencyContacts.map(contact => (
+                                                                                <a
+                                                                                    key={contact.id}
+                                                                                    href={`tel:${contact.phone}`}
+                                                                                    className="flex items-center justify-between p-2 bg-red-50 rounded-lg hover:bg-red-100 transition"
+                                                                                >
+                                                                                    <div>
+                                                                                        <p className="text-sm font-medium text-gray-900">{contact.name}</p>
+                                                                                        <p className="text-xs text-gray-500">{contact.relationship}</p>
+                                                                                    </div>
+                                                                                    <div className="flex items-center gap-2 text-red-700">
+                                                                                        <span className="text-sm font-medium">{contact.phone}</span>
+                                                                                        <Phone className="w-4 h-4" />
+                                                                                    </div>
+                                                                                </a>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
+
+                                                        {/* HIGH URGENCY ACTIONS */}
+                                                        {symptomAnalysis.urgency === 'high' && (
+                                                            <div className="space-y-2 mb-4">
+                                                                {/* Email Doctor */}
+                                                                {onSendEmergencyEmail && (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            onSendEmergencyEmail(lastLoggedSymptom, symptomAnalysis.urgency);
+                                                                        }}
+                                                                        className="w-full py-2.5 bg-orange-600 text-white font-semibold rounded-lg hover:bg-orange-700 transition flex items-center justify-center gap-2"
+                                                                    >
+                                                                        <Mail className="w-4 h-4" />
+                                                                        Email Doctor Now
+                                                                    </button>
+                                                                )}
+
+                                                                {/* Emergency Contacts for high urgency too */}
+                                                                {emergencyContacts.length > 0 && (
+                                                                    <div className="bg-white rounded-lg border border-orange-200 p-3">
+                                                                        <p className="text-xs font-bold text-orange-700 uppercase mb-2 flex items-center gap-1">
+                                                                            <Phone className="w-3 h-3" /> Emergency Contacts
+                                                                        </p>
+                                                                        <div className="space-y-2">
+                                                                            {emergencyContacts.map(contact => (
+                                                                                <a
+                                                                                    key={contact.id}
+                                                                                    href={`tel:${contact.phone}`}
+                                                                                    className="flex items-center justify-between p-2 bg-orange-50 rounded-lg hover:bg-orange-100 transition"
+                                                                                >
+                                                                                    <div>
+                                                                                        <p className="text-sm font-medium text-gray-900">{contact.name}</p>
+                                                                                        <p className="text-xs text-gray-500">{contact.relationship}</p>
+                                                                                    </div>
+                                                                                    <div className="flex items-center gap-2 text-orange-700">
+                                                                                        <span className="text-sm font-medium">{contact.phone}</span>
+                                                                                        <Phone className="w-4 h-4" />
+                                                                                    </div>
+                                                                                </a>
+                                                                            ))}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
+
+                                                        {/* Book Appointment — for all urgency levels */}
+                                                        {symptomAnalysis.suggest_appointment && onBookAppointment && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    onBookAppointment(lastLoggedSymptom);
+                                                                    closeModal();
+                                                                }}
+                                                                className={`w-full py-2.5 font-semibold rounded-lg transition flex items-center justify-center gap-2 ${
+                                                                    ['emergency', 'high'].includes(symptomAnalysis.urgency)
+                                                                        ? 'bg-white border-2 border-gray-200 text-gray-700 hover:bg-gray-50'
+                                                                        : 'bg-teal-600 text-white hover:bg-teal-700'
+                                                                }`}
+                                                            >
+                                                                <Calendar className="w-4 h-4" />
+                                                                Book Doctor Appointment
+                                                            </button>
+                                                        )}
+
+                                                        {/* Draft email for moderate (non-emergency gets simpler option) */}
+                                                        {symptomAnalysis.urgency === 'moderate' && onDraftEmail && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    onDraftEmail(lastLoggedSymptom, symptomAnalysis.urgency);
+                                                                    closeModal();
+                                                                }}
+                                                                className="w-full mt-2 py-2.5 bg-white border-2 border-yellow-200 text-yellow-700 font-semibold rounded-lg hover:bg-yellow-50 transition flex items-center justify-center gap-2"
+                                                            >
+                                                                <Mail className="w-4 h-4" />
+                                                                Draft Email to Doctor
+                                                            </button>
+                                                        )}
+
+                                                        {/* Questions to ask */}
+                                                        {symptomAnalysis.questions_to_ask.length > 0 && (
+                                                            <div className={`mt-3 pt-3 border-t ${
+                                                                symptomAnalysis.urgency === 'emergency' ? 'border-red-200' :
+                                                                symptomAnalysis.urgency === 'high' ? 'border-orange-200' :
+                                                                'border-teal-200'
+                                                            }`}>
+                                                                <p className="text-xs font-medium text-gray-600 mb-1">Questions for the doctor:</p>
+                                                                <ul className="text-xs text-gray-500 space-y-0.5">
+                                                                    {symptomAnalysis.questions_to_ask.map((q, i) => (
+                                                                        <li key={i}>• {q}</li>
+                                                                    ))}
+                                                                </ul>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
@@ -541,6 +743,97 @@ export default function AIAgent({ patientId, patientName, doctors = [], onBookAp
                                             <p>{result?.error || 'Failed to load symptoms'}</p>
                                         </div>
                                     )}
+                                </div>
+                            )}
+
+                            {/* AUTONOMOUS AGENT CHAT */}
+                            {activeModal === 'agent' && (
+                                <div className="flex flex-col h-[55vh]">
+                                    {/* Intro */}
+                                    {agentMessages.length === 0 && !isAgentLoading && (
+                                        <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
+                                            <div className="w-16 h-16 bg-gradient-to-br from-violet-100 to-teal-100 rounded-2xl flex items-center justify-center mb-4">
+                                                <Bot className="w-8 h-8 text-teal-600" />
+                                            </div>
+                                            <h3 className="font-bold text-zinc-900 mb-2">CareLink AI Agent</h3>
+                                            <p className="text-sm text-zinc-500 mb-4">
+                                                I can take actions for you autonomously. Try asking me to:
+                                            </p>
+                                            <div className="grid grid-cols-1 gap-2 w-full max-w-sm">
+                                                {[
+                                                    "Email Dr. Smith about the latest symptoms",
+                                                    "Book a follow-up appointment next Tuesday at 2 PM",
+                                                    "Search for Parkinson's tremor management tips",
+                                                    "Find nearby pharmacies open now",
+                                                    "Send a Telegram update to the family"
+                                                ].map((suggestion, i) => (
+                                                    <button
+                                                        key={i}
+                                                        onClick={() => { setAgentInput(suggestion); }}
+                                                        className="text-left text-xs px-3 py-2 bg-zinc-50 hover:bg-teal-50 border border-zinc-200 hover:border-teal-300 rounded-lg transition text-zinc-600 hover:text-teal-700"
+                                                    >
+                                                        <Zap className="w-3 h-3 inline mr-1.5 text-teal-500" />
+                                                        {suggestion}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Messages */}
+                                    {agentMessages.length > 0 && (
+                                        <div className="flex-1 overflow-y-auto space-y-3 mb-3">
+                                            {agentMessages.map((msg, i) => (
+                                                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                                    <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${msg.role === 'user'
+                                                        ? 'bg-teal-600 text-white'
+                                                        : 'bg-zinc-100 text-zinc-800'
+                                                        }`}>
+                                                        <div className="text-sm whitespace-pre-wrap">{formatAIText(msg.text)}</div>
+                                                        {msg.actions && msg.actions.length > 0 && (
+                                                            <div className="mt-2 pt-2 border-t border-zinc-200/50">
+                                                                <p className="text-[10px] font-bold uppercase text-zinc-500 mb-1">Actions taken:</p>
+                                                                {msg.actions.map((a: any, j: number) => (
+                                                                    <div key={j} className="flex items-center gap-1.5 text-[11px] text-teal-700 bg-teal-50 rounded px-2 py-1 mb-1">
+                                                                        <CheckCircle className="w-3 h-3" />
+                                                                        <span className="font-medium">{a.tool}</span>
+                                                                        <span className="text-zinc-500 truncate">— {a.result?.slice(0, 60)}</span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {isAgentLoading && (
+                                                <div className="flex justify-start">
+                                                    <div className="bg-zinc-100 rounded-2xl px-4 py-3 flex items-center gap-2 text-zinc-500">
+                                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                                        <span className="text-sm">Agent is working...</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Input */}
+                                    <div className="flex gap-2 pt-2 border-t border-zinc-100">
+                                        <input
+                                            value={agentInput}
+                                            onChange={e => setAgentInput(e.target.value)}
+                                            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendAgentMessage()}
+                                            placeholder="Ask the AI agent to do something..."
+                                            className="flex-1 px-4 py-3 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-teal-500 focus:outline-none text-sm"
+                                            disabled={isAgentLoading}
+                                        />
+                                        <button
+                                            onClick={sendAgentMessage}
+                                            disabled={!agentInput.trim() || isAgentLoading}
+                                            className="px-4 py-3 bg-teal-600 text-white rounded-xl hover:bg-teal-700 disabled:opacity-50 transition"
+                                        >
+                                            <Send className="w-5 h-5" />
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>

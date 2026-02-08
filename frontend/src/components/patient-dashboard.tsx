@@ -6,8 +6,8 @@ import {
     Plus, Trash2, Shield, Pill, Stethoscope, Phone, X, AlertCircle, Home,
     Settings, LogOut, ChevronRight, Heart
 } from "lucide-react";
-import { createClient } from "@supabase/supabase-js";
 import { updatePatientProfile } from "@/app/actions";
+import { supabase } from "@/lib/supabase";
 
 type Auth0User = {
     name?: string;
@@ -36,8 +36,6 @@ type Medication = { id: string; name: string; dosage: string; frequency: string;
 type Doctor = { id: string; name: string; specialty: string; phone: string; hospital?: string; is_primary: boolean; notes?: string; };
 type EmergencyContact = { id: string; name: string; relationship: string; phone: string; email?: string; is_primary: boolean; };
 type SymptomLog = { id: string; symptom: string; severity: string; logged_at: string; };
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
 // CareLink Logo Component
 function CareLinkLogo({ collapsed = false }: { collapsed?: boolean }) {
@@ -75,6 +73,15 @@ export default function PatientDashboard({ user }: { user: Auth0User }) {
     const [allowedCaregivers, setAllowedCaregivers] = useState<AllowedCaregiver[]>([]);
     const [medications, setMedications] = useState<Medication[]>([]);
     const [doctors, setDoctors] = useState<Doctor[]>([]);
+    const [editingProfile, setEditingProfile] = useState(false);
+    const [profileForm, setProfileForm] = useState({
+        full_name: '',
+        date_of_birth: '',
+        blood_type: '',
+        diagnosis_details: '',
+        phone: '',
+        address: '',
+    });
     const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>([]);
     const [recentSymptoms, setRecentSymptoms] = useState<SymptomLog[]>([]);
 
@@ -232,6 +239,26 @@ export default function PatientDashboard({ user }: { user: Auth0User }) {
         const m = today.getMonth() - birthDate.getMonth();
         if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
         return age;
+    };
+
+    const startEditingProfile = () => {
+        setProfileForm({
+            full_name: profile?.full_name || '',
+            date_of_birth: profile?.date_of_birth || '',
+            blood_type: profile?.blood_type || '',
+            diagnosis_details: profile?.diagnosis_details || '',
+            phone: profile?.phone || '',
+            address: profile?.address || '',
+        });
+        setEditingProfile(true);
+    };
+
+    const saveProfile = async () => {
+        const result = await updatePatientProfile({ user, data: profileForm });
+        if (result.success) {
+            setProfile(prev => prev ? { ...prev, ...profileForm } : prev);
+            setEditingProfile(false);
+        }
     };
 
     const activeMeds = medications.filter(m => m.is_current);
@@ -394,33 +421,95 @@ export default function PatientDashboard({ user }: { user: Auth0User }) {
 
                                 {/* Health Summary */}
                                 <div className="bg-white rounded-xl p-6 border border-gray-100">
-                                    <h3 className="text-lg font-bold text-gray-900 mb-4">Health Summary</h3>
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <div>
-                                            <p className="text-xs text-gray-400 uppercase">Patient Name</p>
-                                            <p className="text-gray-900 font-medium">{profile?.full_name}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-400 uppercase">Age</p>
-                                            <p className="text-gray-900 font-medium">{calculateAge(profile?.date_of_birth)} years</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-400 uppercase">Patient ID</p>
-                                            <p className="text-gray-900 font-medium">{patientId}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs text-gray-400 uppercase">Blood Type</p>
-                                            <p className="text-gray-900 font-medium">{profile?.blood_type || 'A+'}</p>
-                                        </div>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-lg font-bold text-gray-900">Health Summary</h3>
+                                        {editingProfile ? (
+                                            <div className="flex gap-2">
+                                                <button onClick={() => setEditingProfile(false)} className="px-3 py-1.5 text-sm text-gray-500 hover:bg-gray-100 rounded-lg transition">
+                                                    Cancel
+                                                </button>
+                                                <button onClick={saveProfile} className="px-3 py-1.5 text-sm bg-teal-600 text-white rounded-lg hover:bg-teal-700 transition flex items-center gap-1">
+                                                    <Save className="w-3.5 h-3.5" /> Save
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <button onClick={startEditingProfile} className="p-2 text-gray-400 hover:bg-gray-100 rounded-lg transition">
+                                                <Edit2 className="w-4 h-4" />
+                                            </button>
+                                        )}
                                     </div>
-                                    <div className="border-t border-gray-100 mt-4 pt-4">
-                                        <p className="text-xs text-gray-400 uppercase">Primary Diagnosis</p>
-                                        <p className="text-gray-900 font-medium">{profile?.diagnosis_details || 'Type 2 Diabetes'}</p>
-                                    </div>
-                                    <div className="border-t border-gray-100 mt-4 pt-4">
-                                        <p className="text-xs text-gray-400 uppercase">Last Updated</p>
-                                        <p className="text-gray-500 text-sm">{new Date().toLocaleString()}</p>
-                                    </div>
+                                    {editingProfile ? (
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="text-xs text-gray-400 uppercase block mb-1">Full Name</label>
+                                                    <input value={profileForm.full_name} onChange={e => setProfileForm(p => ({ ...p, full_name: e.target.value }))} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 text-sm" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs text-gray-400 uppercase block mb-1">Date of Birth</label>
+                                                    <input type="date" value={profileForm.date_of_birth} onChange={e => setProfileForm(p => ({ ...p, date_of_birth: e.target.value }))} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 text-sm" />
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs text-gray-400 uppercase block mb-1">Blood Type</label>
+                                                    <select value={profileForm.blood_type} onChange={e => setProfileForm(p => ({ ...p, blood_type: e.target.value }))} className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 text-sm">
+                                                        <option value="">Select...</option>
+                                                        {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bt => (
+                                                            <option key={bt} value={bt}>{bt}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs text-gray-400 uppercase block mb-1">Phone</label>
+                                                    <input value={profileForm.phone} onChange={e => setProfileForm(p => ({ ...p, phone: e.target.value }))} placeholder="(555) 123-4567" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 text-sm" />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-gray-400 uppercase block mb-1">Primary Diagnosis</label>
+                                                <input value={profileForm.diagnosis_details} onChange={e => setProfileForm(p => ({ ...p, diagnosis_details: e.target.value }))} placeholder="e.g. Type 2 Diabetes" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 text-sm" />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-gray-400 uppercase block mb-1">Address</label>
+                                                <input value={profileForm.address} onChange={e => setProfileForm(p => ({ ...p, address: e.target.value }))} placeholder="123 Main St, City, State" className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-teal-500 text-sm" />
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="grid grid-cols-2 gap-6">
+                                                <div>
+                                                    <p className="text-xs text-gray-400 uppercase">Patient Name</p>
+                                                    <p className="text-gray-900 font-medium">{profile?.full_name}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-400 uppercase">Age</p>
+                                                    <p className="text-gray-900 font-medium">{calculateAge(profile?.date_of_birth)} years</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-400 uppercase">Patient ID</p>
+                                                    <p className="text-gray-900 font-medium">{patientId}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-400 uppercase">Blood Type</p>
+                                                    <p className="text-gray-900 font-medium">{profile?.blood_type || '—'}</p>
+                                                </div>
+                                                {profile?.phone && (
+                                                    <div>
+                                                        <p className="text-xs text-gray-400 uppercase">Phone</p>
+                                                        <p className="text-gray-900 font-medium">{profile.phone}</p>
+                                                    </div>
+                                                )}
+                                                {profile?.address && (
+                                                    <div>
+                                                        <p className="text-xs text-gray-400 uppercase">Address</p>
+                                                        <p className="text-gray-900 font-medium">{profile.address}</p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="border-t border-gray-100 mt-4 pt-4">
+                                                <p className="text-xs text-gray-400 uppercase">Primary Diagnosis</p>
+                                                <p className="text-gray-900 font-medium">{profile?.diagnosis_details || '—'}</p>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
 
                                 {/* Active Medications */}
