@@ -47,4 +47,4 @@ wheels/
 .DS_Store
 Thumbs.db
 
-**/token.json.bak:1
+**/token.json.bak
