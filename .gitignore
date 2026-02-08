@@ -7,3 +7,6 @@ backend/__pycache__/
 **/.venv/**
 **/.idea/**
 **/cxccaregiver-223983f52c92.json
+backend/token.json
+backend/token.json.bak
+backend/credentials.json

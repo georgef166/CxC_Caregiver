@@ -161,7 +161,7 @@ export default function AIAgent({ patientId, patientName, doctors = [], emergenc
         setResult(null);
 
         try {
-            const response = await fetch("/api/ai-chat", {
+            const response = await fetch("/api/agent", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -213,7 +213,7 @@ export default function AIAgent({ patientId, patientName, doctors = [], emergenc
         setResult(null);
 
         try {
-            const response = await fetch("/api/ai-chat", {
+            const response = await fetch("/api/agent", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -236,7 +236,7 @@ export default function AIAgent({ patientId, patientName, doctors = [], emergenc
         setResult(null);
 
         try {
-            const response = await fetch("/api/ai-chat", {
+            const response = await fetch("/api/agent", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -259,7 +259,7 @@ export default function AIAgent({ patientId, patientName, doctors = [], emergenc
         setResult(null);
 
         try {
-            const response = await fetch("/api/ai-chat", {
+            const response = await fetch("/api/agent", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

@@ -445,7 +445,7 @@ def send_email(
         server.send_message(msg)
 
 
-def send_telegram_message(text: str, chat_id: int = int(os.getenv("TELEGRAM_CHAT_ID", "0"))) -> None:
+def send_telegram_message(text: str, chat_id: int = int(os.getenv("CHAT_ID", "0"))) -> None:
     """
     Standalone Telegram message sender (used by task queue).
     """
