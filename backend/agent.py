@@ -396,3 +396,90 @@ async def run(prompt: str):
             ))
         else:
             return response.text
+
+
+# ============================================================
+# Standalone utility functions (used by main.py task queue)
+# ============================================================
+
+def send_email(
+    to: List[str],
+    subject: str,
+    body: str,
+    cc: Optional[List[str]] = None,
+    reply_to: Optional[str] = None,
+    attachment_path: Optional[str] = None
+) -> None:
+    """
+    Standalone email sender (used by task queue / email assistant).
+    """
+    smtp_user = os.environ["SMTP_USER"]
+    smtp_password = os.environ["SMTP_PASSWORD"]
+
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = smtp_user
+    msg["To"] = ", ".join(to)
+
+    if cc:
+        msg["Cc"] = ", ".join(cc)
+    if reply_to:
+        msg["Reply-To"] = reply_to
+
+    msg.set_content(body)
+
+    if attachment_path and os.path.exists(attachment_path):
+        import mimetypes
+        mime_type, _ = mimetypes.guess_type(attachment_path)
+        if mime_type:
+            maintype, subtype = mime_type.split("/")
+        else:
+            maintype, subtype = "application", "octet-stream"
+        with open(attachment_path, "rb") as f:
+            msg.add_attachment(f.read(), maintype=maintype, subtype=subtype,
+                               filename=os.path.basename(attachment_path))
+
+    with smtplib.SMTP("smtp.gmail.com", 587) as server:
+        server.starttls()
+        server.login(smtp_user, smtp_password)
+        server.send_message(msg)
+
+
+def send_telegram_message(text: str, chat_id: int = int(os.getenv("TELEGRAM_CHAT_ID", "0"))) -> None:
+    """
+    Standalone Telegram message sender (used by task queue).
+    """
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    if not token:
+        print("TELEGRAM_BOT_TOKEN not set, skipping telegram send")
+        return
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {"chat_id": chat_id, "text": text}
+
+    resp = requests.post(url, json=payload)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def get_telegram_updates(offset: Optional[int] = None) -> List[dict]:
+    """
+    Fetches updates from the Telegram bot.
+    """
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    if not token:
+        return []
+    url = f"https://api.telegram.org/bot{token}/getUpdates"
+    params = {"timeout": 5}
+    if offset:
+        params["offset"] = offset
+
+    try:
+        resp = requests.get(url, params=params)
+        resp.raise_for_status()
+        data = resp.json()
+        if data["ok"]:
+            return data["result"]
+        return []
+    except Exception as e:
+        print(f"Error fetching telegram updates: {e}")
+        return []

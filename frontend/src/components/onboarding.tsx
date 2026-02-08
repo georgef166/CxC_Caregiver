@@ -110,7 +110,7 @@ export default function Onboarding({ user, initialRole }: { user: any, initialRo
                         Select Your Role
                     </h1>
                     <p className="text-slate-600 font-medium">
-                        Choose how you'll be using CareGlobe
+                        Choose how you'll be using CareLink
                     </p>
                     <p className="text-slate-400 text-sm">
                         This selection is permanent and cannot be changed

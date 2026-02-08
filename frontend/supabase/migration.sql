@@ -7,6 +7,7 @@
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS phone text;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS address text;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS diagnosis_details text;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS blood_type text;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS onboarding_complete boolean DEFAULT false;
 
 -- =============================================

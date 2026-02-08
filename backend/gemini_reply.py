@@ -8,6 +8,7 @@ from typing import Dict, Optional
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
+import json
 
 load_dotenv()
 
@@ -99,7 +100,7 @@ class GeminiReplyGenerator:
             Formatted prompt string
         """
         
-        prompt = f"""You are an email assistant helping to draft a reply to an email.
+        prompt = f"""You are an AI assistant acting on behalf of a caregiver managing a patient's care. Your job is to draft ACTIONABLE replies — never say "I'll check and get back to you" or "I'll let you know later". You must make a decision in every reply.
 
 Original Email Details:
 From: {sender}
@@ -112,18 +113,20 @@ Email Body:
         
         if context:
             prompt += f"""
-Additional Context:
+CALENDAR & AVAILABILITY INFO (use this to make scheduling decisions):
 {context}
 
 """
         
         prompt += f"""
-Please generate a {tone} email reply. Follow these guidelines:
-1. Address the main points of the original email
-2. Be clear and concise
-3. Maintain a {tone} tone
-4. If the email requires specific information you don't have, acknowledge this politely
-5. End with an appropriate closing
+IMPORTANT RULES:
+1. If someone proposes a time and the calendar shows FREE → CONFIRM the appointment. Say "That time works, we'll be there" or similar.
+2. If someone proposes a time and the calendar shows BUSY → Decline that specific time and ASK for an alternative day/time. Do NOT say you'll "check and get back."
+3. If someone asks a medical question → Answer helpfully based on the context or say you'll discuss with the doctor at the next appointment.
+4. If someone needs a decision → MAKE the decision. Be proactive, not passive.
+5. NEVER say "I'll check my schedule", "I'll get back to you", "Let me look into it", or anything deferring action.
+6. Keep it {tone}, warm, and concise.
+7. Sign off as the caregiver (not as an AI).
 
 Format your response as:
 SUBJECT: [Reply subject line]
@@ -226,6 +229,34 @@ REASONING: [brief explanation]
                 'requires_reply': True,
                 'reasoning': 'Analysis failed'
             }
+
+
+    def extract_scheduling_info(self, email_body: str) -> Dict[str, any]:
+        """Extract date/time info for appointments."""
+        prompt = f"""
+        Analyze this email body to find if there is a specific date and time proposed for an appointment or meeting.
+        Assume the year is 2026.
+        Return raw JSON object:
+        {{
+            "has_proposal": boolean, 
+            "datetime_iso": "YYYY-MM-DDTHH:MM:SS" (string or null if not found, use 24h format),
+            "duration_minutes": number (default 120),
+            "summary": "Meeting Title (e.g. Appointment with Dr. X)"
+        }}
+        
+        Email Body: 
+        {email_body[:2000]}
+        """
+        try:
+            response = self.client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt,
+                config=types.GenerateContentConfig(response_mime_type="application/json")
+            )
+            return json.loads(response.text)
+        except Exception as e:
+            print(f"Error extracting scheduling info: {e}")
+            return {"has_proposal": False}
 
 
 if __name__ == "__main__":

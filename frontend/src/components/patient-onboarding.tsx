@@ -212,7 +212,7 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
             <div className="max-w-3xl mx-auto">
                 {/* Header */}
                 <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold text-zinc-900">Welcome to CareGlobe</h1>
+                    <h1 className="text-3xl font-bold text-zinc-900">Welcome to CareLink</h1>
                     <p className="text-zinc-500 mt-2">Let's set up your patient profile</p>
                 </div>
 
@@ -491,7 +491,7 @@ export default function PatientOnboarding({ user, onComplete }: PatientOnboardin
                                 <h3 className="font-semibold text-teal-900 mb-2">Two-Way Linking</h3>
                                 <p className="text-teal-700 text-sm">
                                     For security, caregivers can only link to you if you've pre-approved their code here.
-                                    Ask your caregiver for their CareGlobe code and add it below.
+                                    Ask your caregiver for their CareLink code and add it below.
                                 </p>
                             </div>
 

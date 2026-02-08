@@ -4,17 +4,17 @@ import { useState, useEffect } from "react";
 import {
     User, Link as LinkIcon, Stethoscope, Plus, Users, ArrowLeft, User as UserIcon,
     Copy, Check, Key, Calendar, Pill, Phone, AlertCircle, Activity, Home,
-    Settings, LogOut, Heart, ChevronRight
+    Settings, LogOut, Heart, ChevronRight, Send, Loader2, X
 } from "lucide-react";
 import { findPatientByCode, linkPatientToCaregiverTwoWay, getLinkedPatients, generateCaregiverCode } from "@/app/actions";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 import AIAgent from "@/components/ai-agent";
 import EmailAssistant from "@/components/email-assistant";
 import AppointmentBooker from "@/components/appointment-booker";
 import ScheduleManager from "@/components/schedule-manager";
+import GoogleCalendarView from "@/components/google-calendar-view";
+import TaskQueue from "@/components/task-queue";
 import { Mail } from "lucide-react";
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
 type Patient = {
     id: string;
@@ -43,7 +43,7 @@ export default function CaregiverDashboard({ user }: { user: any }) {
     const [patients, setPatients] = useState<Patient[]>([]);
     const [view, setView] = useState<'list' | 'add' | 'detail' | 'inbox'>('list');
     const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
-    const [activeTab, setActiveTab] = useState<'overview' | 'medications' | 'doctors' | 'emergency' | 'schedule' | 'inbox'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'medications' | 'doctors' | 'emergency' | 'schedule' | 'calendar' | 'inbox'>('overview');
 
     // Patient data when viewing details
     const [patientMedications, setPatientMedications] = useState<Medication[]>([]);
@@ -67,6 +67,10 @@ export default function CaregiverDashboard({ user }: { user: any }) {
     const [showAppointmentBooker, setShowAppointmentBooker] = useState(false);
     const [appointmentSymptom, setAppointmentSymptom] = useState("");
     const [draftEmailData, setDraftEmailData] = useState<{ to: string; subject: string; body: string } | null>(null);
+
+    // Inline email review from task queue (stays on overview)
+    const [reviewingEmailTask, setReviewingEmailTask] = useState<{ to: string; subject: string; body: string } | null>(null);
+    const [isSendingReview, setIsSendingReview] = useState(false);
 
     useEffect(() => {
         const loadData = async () => {
@@ -105,6 +109,49 @@ export default function CaregiverDashboard({ user }: { user: any }) {
             console.error("Error fetching patient details:", err);
         } finally {
             setLoadingPatientData(false);
+        }
+    };
+
+    const handleEditTask = (task: any) => {
+        if (task.type === 'email_reply' && task.payload?.draft_reply) {
+            // Show inline review on overview page instead of navigating to inbox
+            let sender = task.payload.original_email?.sender || "";
+            if (sender.includes('<')) {
+                sender = sender.split('<')[1].replace('>', '');
+            }
+
+            setReviewingEmailTask({
+                to: sender,
+                subject: task.payload.draft_reply.subject,
+                body: task.payload.draft_reply.body
+            });
+        }
+    };
+
+    const handleSendReviewEmail = async () => {
+        if (!reviewingEmailTask) return;
+        setIsSendingReview(true);
+        try {
+            const res = await fetch("/api/email", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(reviewingEmailTask)
+            });
+            if (res.ok) {
+                setReviewingEmailTask(null);
+            }
+        } catch (err) {
+            console.error("Error sending email:", err);
+        } finally {
+            setIsSendingReview(false);
+        }
+    };
+
+    const handleOpenInInbox = () => {
+        if (reviewingEmailTask) {
+            setDraftEmailData(reviewingEmailTask);
+            setReviewingEmailTask(null);
+            setActiveTab('inbox');
         }
     };
 
@@ -466,6 +513,15 @@ export default function CaregiverDashboard({ user }: { user: any }) {
                         </button>
 
                         <button
+                            onClick={() => setActiveTab('calendar')}
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg mb-1 transition ${activeTab === 'calendar' ? 'bg-teal-600 text-white' : 'text-teal-100 hover:bg-teal-600/50'
+                                }`}
+                        >
+                            <Activity className="w-5 h-5" />
+                            <span className="font-medium">My Calendar</span>
+                        </button>
+
+                        <button
                             onClick={() => setActiveTab('doctors')}
                             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg mb-1 transition ${activeTab === 'doctors' ? 'bg-teal-600 text-white' : 'text-teal-100 hover:bg-teal-600/50'
                                 }`}
@@ -655,6 +711,10 @@ export default function CaregiverDashboard({ user }: { user: any }) {
                                     />
                                 )}
 
+                                {activeTab === 'calendar' && (
+                                    <GoogleCalendarView />
+                                )}
+
                                 {activeTab === 'inbox' && (
                                     <div className="bg-white rounded-xl border border-gray-100 p-6 min-h-[600px]">
                                         <h3 className="text-xl font-bold text-gray-900 mb-6">Email Assistant</h3>
@@ -752,6 +812,126 @@ export default function CaregiverDashboard({ user }: { user: any }) {
                             {activeTab === 'overview' && (
                                 <div className="w-72 space-y-6">
                                     {/* Latest Vitals */}
+                                    {/* AI Task Queue */}
+                                    <TaskQueue
+                                        onEditTask={handleEditTask}
+                                        patientName={selectedPatient?.name}
+                                        doctorEmails={patientDoctors.map(d => d.email).filter(Boolean) as string[]}
+                                        doctorNames={patientDoctors.map(d => d.name)}
+                                        contactEmails={patientEmergencyContacts.map(c => c.email).filter(Boolean) as string[]}
+                                    />
+
+                                    {/* Inline Email Review (from task queue) */}
+                                    {reviewingEmailTask && (
+                                        <div className="bg-white rounded-xl border border-blue-200 shadow-sm overflow-hidden">
+                                            <div className="px-4 py-3 border-b border-blue-100 flex items-center justify-between bg-blue-50/50">
+                                                <h4 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+                                                    <Mail className="w-4 h-4 text-blue-600" />
+                                                    Review Draft Email
+                                                </h4>
+                                                <button onClick={() => setReviewingEmailTask(null)} className="p-1 text-gray-400 hover:text-gray-600 rounded transition">
+                                                    <X className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                            <div className="p-3 space-y-2">
+                                                <div>
+                                                    <label className="text-[10px] font-semibold text-gray-400 uppercase">To</label>
+                                                    <input
+                                                        value={reviewingEmailTask.to}
+                                                        onChange={e => setReviewingEmailTask({ ...reviewingEmailTask, to: e.target.value })}
+                                                        className="w-full text-xs px-2 py-1.5 border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-semibold text-gray-400 uppercase">Subject</label>
+                                                    <input
+                                                        value={reviewingEmailTask.subject}
+                                                        onChange={e => setReviewingEmailTask({ ...reviewingEmailTask, subject: e.target.value })}
+                                                        className="w-full text-xs px-2 py-1.5 border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="text-[10px] font-semibold text-gray-400 uppercase">Body</label>
+                                                    <textarea
+                                                        value={reviewingEmailTask.body}
+                                                        onChange={e => setReviewingEmailTask({ ...reviewingEmailTask, body: e.target.value })}
+                                                        rows={5}
+                                                        className="w-full text-xs px-2 py-1.5 border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-400 resize-none"
+                                                    />
+                                                </div>
+                                                <div className="flex gap-2 pt-1">
+                                                    <button
+                                                        onClick={handleSendReviewEmail}
+                                                        disabled={isSendingReview}
+                                                        className="flex-1 py-1.5 bg-blue-600 text-white text-xs font-medium rounded-md hover:bg-blue-700 transition flex items-center justify-center gap-1"
+                                                    >
+                                                        {isSendingReview ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                                                        Send
+                                                    </button>
+                                                    <button
+                                                        onClick={handleOpenInInbox}
+                                                        className="flex-1 py-1.5 text-blue-600 bg-blue-50 text-xs font-medium rounded-md hover:bg-blue-100 transition"
+                                                    >
+                                                        Open in Inbox
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* AI Assistant */}
+                                    <div className="bg-white rounded-xl border border-gray-100 p-5">
+                                        <h4 className="font-bold text-gray-900 mb-4">Care Options</h4>
+                                        <AIAgent
+                                            patientId={selectedPatient!.id}
+                                            patientName={selectedPatient!.name}
+                                            doctors={patientDoctors.map(d => ({
+                                                id: d.id,
+                                                name: d.name,
+                                                specialty: d.specialty,
+                                                email: d.email,
+                                                is_primary: d.is_primary
+                                            }))}
+                                            emergencyContacts={patientEmergencyContacts}
+                                            onBookAppointment={(symptom) => {
+                                                setAppointmentSymptom(symptom);
+                                                setShowAppointmentBooker(true);
+                                            }}
+                                            onDraftEmail={(symptom, urgency) => {
+                                                const primaryDoctor = patientDoctors.find(d => d.is_primary) || patientDoctors[0];
+                                                setDraftEmailData({
+                                                    to: primaryDoctor?.email || "",
+                                                    subject: `URGENT: ${selectedPatient?.name} - ${symptom}`,
+                                                    body: `Dear Dr. ${primaryDoctor?.name || "Doctor"},\n\nI am logging a symptom for ${selectedPatient?.name} which has been flagged as ${urgency.toUpperCase()} urgency.\n\nSymptom: ${symptom}\n\nPlease advise immediately.\n\nBest,\nCaregiver`
+                                                });
+                                                setActiveTab('inbox');
+                                            }}
+                                            onSendEmergencyEmail={async (symptom, urgency) => {
+                                                const primaryDoctor = patientDoctors.find(d => d.is_primary) || patientDoctors[0];
+                                                if (!primaryDoctor?.email) return;
+                                                try {
+                                                    await fetch('/api/email', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({
+                                                            action: 'send',
+                                                            to: primaryDoctor.email,
+                                                            subject: `🚨 EMERGENCY: ${selectedPatient?.name} - ${symptom}`,
+                                                            body: `Dear Dr. ${primaryDoctor.name},\n\nThis is an EMERGENCY alert from CareLink.\n\nPatient: ${selectedPatient?.name}\nUrgency: ${urgency.toUpperCase()}\nSymptom: ${symptom}\n\nThis symptom has been flagged as ${urgency === 'emergency' ? 'requiring IMMEDIATE medical attention' : 'HIGH URGENCY'}. Please respond as soon as possible.\n\nTime of report: ${new Date().toLocaleString()}\n\nThank you,\nCareLink Automated Alert`
+                                                        })
+                                                    });
+                                                    alert(`Emergency email sent to Dr. ${primaryDoctor.name}`);
+                                                } catch {
+                                                    alert('Failed to send emergency email. Please call the doctor directly.');
+                                                }
+                                            }}
+                                            forceOpenAction={quickAction}
+                                            compact={true}
+                                        />
+                                    </div>
+
+                                    {/* AI Task Queue */}
+                                    {/* Latest Vitals */}
                                     <div className="bg-white rounded-xl border border-gray-100 p-5">
                                         <h4 className="font-bold text-gray-900 mb-4">Latest Vitals</h4>
                                         <div className="space-y-3">
@@ -773,37 +953,6 @@ export default function CaregiverDashboard({ user }: { user: any }) {
                                             </div>
                                         </div>
                                         <p className="text-xs text-gray-400 mt-4">Last updated: {new Date().toLocaleDateString()}</p>
-                                    </div>
-
-                                    {/* AI Assistant */}
-                                    <div className="bg-white rounded-xl border border-gray-100 p-5">
-                                        <h4 className="font-bold text-gray-900 mb-4">Care Options</h4>
-                                        <AIAgent
-                                            patientId={selectedPatient!.id}
-                                            patientName={selectedPatient!.name}
-                                            doctors={patientDoctors.map(d => ({
-                                                id: d.id,
-                                                name: d.name,
-                                                specialty: d.specialty,
-                                                email: d.email,
-                                                is_primary: d.is_primary
-                                            }))}
-                                            onBookAppointment={(symptom) => {
-                                                setAppointmentSymptom(symptom);
-                                                setShowAppointmentBooker(true);
-                                            }}
-                                            onDraftEmail={(symptom, urgency) => {
-                                                const primaryDoctor = patientDoctors.find(d => d.is_primary) || patientDoctors[0];
-                                                setDraftEmailData({
-                                                    to: primaryDoctor?.email || "",
-                                                    subject: `URGENT: ${selectedPatient?.name} - ${symptom}`,
-                                                    body: `Dear Dr. ${primaryDoctor?.name || "Doctor"},\n\nI am logging a symptom for ${selectedPatient?.name} which has been flagged as ${urgency.toUpperCase()} urgency.\n\nSymptom: ${symptom}\n\nPlease advise immediately.\n\nBest,\nCaregiver`
-                                                });
-                                                setActiveTab('inbox');
-                                            }}
-                                            forceOpenAction={quickAction}
-                                            compact={true}
-                                        />
                                     </div>
                                 </div>
                             )}
