@@ -24,21 +24,31 @@ class CaregiverAgent:
         self.prompt = prompt
         self.system_prompt = \
             """
-            You are an AI agent assisting caregivers of people with Parkinson’s disease.
-            You act as the single source of truth for the patient’s information.
+            You are an AI agent assisting caregivers of people with Parkinson's disease.
+            You act as the single source of truth for the patient's information.
             Assume patient details are accumulated accurately over prior interactions and are always available to you.
             Your mission is to reduce caregiver effort in real time and answer questions decisively.
+
+            IMPORTANT INTERACTION RULES:
+            This is a SINGLE-TURN interaction. You receive one request, execute the necessary actions using your tools, and provide a final summary.
+            Do NOT ask follow-up questions. Do NOT ask for confirmation before acting. Do NOT say things like "Would you like me to..." or "Do you want me to...".
+            The user cannot reply to you. Act decisively on what was requested and report what you did.
+            If the user does not specify details like a subject line, email body, event description, etc., generate reasonable defaults yourself. NEVER respond asking what the subject or body should be — just fill them in appropriately based on context.
+
+            CONTEXT:
+            You are often facilitating indirect communication between parties in a caregiving workflow — for example, a doctor emailing a caregiver, a caregiver messaging a family member, or scheduling appointments on behalf of the patient. The user issuing the request may not be the recipient. Write all messages, emails, and event details from the perspective appropriate to the situation (e.g. if a doctor is sending an email to a caregiver, write it as the doctor addressing the caregiver).
+
             Medical constraints:
             Do not diagnose or prescribe.
             Ground medical claims in current sources.
-            Clearly flag escalation thresholds (“contact clinician if X”, “emergency if Y”).
+            Clearly flag escalation thresholds ("contact clinician if X", "emergency if Y").
             Decision heuristic:
             If the answer exists in patient data → respond immediately.
             If an action can reduce caregiver work → execute it.
             If uncertainty impacts safety → escalate or clarify once.
             Tone:
             Direct, calm, authoritative.
-            No speculation
+            No speculation.
             """
         message_tool = {
             "name": "send_telegram_message",
@@ -73,10 +83,7 @@ class CaregiverAgent:
                         "description": "Email subject line."
                     },
                     "body": {
-                        "type": "array",
-                        "items": {
-                            "type": "string"
-                        },
+                        "type": "string",
                         "description": "Plain-text email body."
                     },
                     "cc": {
@@ -146,30 +153,6 @@ class CaregiverAgent:
 
         ext_tool = {
             "name": "call_tool_ext",
-            "description": """
-            Executes an external Google built-in tool.
-            This function serves as a bridge to utilize
-            Google's native capabilities such as Search, Maps, and URL context processing.
-            """,
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "content": {
-                        "type": "string",
-                        "description": """
-                            The query string, location, or URL to be processed by the tool. Append: 'USE <tool name>' 
-                            to the content
-                        """
-                    }
-                },
-                "required": [
-                    "tool_name"
-                ]
-            }
-        }
-
-        ext_tool = {
-            "name": "call_tool_ext",
             "description": """Executes an external Google built-in tool (Search, Maps, or URL context).
                             This acts as a bridge to Google's native capabilities.""",
             "parameters": {
@@ -180,7 +163,8 @@ class CaregiverAgent:
                         "description": """The prompt you were currently provided with,
                                         append 'USE <tool name>' to the content"""
                     }
-                }
+                },
+                "required": ["content"]
             }
         }
 
@@ -264,8 +248,8 @@ class CaregiverAgent:
     @staticmethod
     def book_google_calendar_event(
             summary: str,
-            start_time: str,  # e.g., "2026-02-07 14:30"
-            end_time: str,  # e.g., "2026-02-07 15:30"
+            start_time: str,
+            end_time: str,
             attendees_emails: list[str] = None,
             description: str = "",
             calendar_id: str = "cxccaregiver@gmail.com",
@@ -408,7 +392,3 @@ async def run(prompt: str):
             ))
         else:
             return response.text
-
-
-res = asyncio.run(run(prompt="execute the send_message tool saying that this is a test"))
-print(res)
