@@ -61,9 +61,11 @@ Medical constraints:
 Decision heuristic:
 - If the answer exists in patient data → respond immediately.
 - If an action can reduce caregiver work → execute it (send email, book calendar, send message).
+- If the user asks about their schedule, upcoming appointments, or calendar → use get_calendar_events to fetch real data. Never guess or make up events.
 - If uncertainty impacts safety → escalate or clarify once.
 
 When booking appointments, default to 2-hour duration unless specified.
+When the user asks about their calendar, schedule, or upcoming events, ALWAYS use the get_calendar_events tool to fetch real data.
 When sending emails, always be professional and include the patient's name for context.
 When searching, prefer recent and reputable medical sources.
 
@@ -158,6 +160,25 @@ Tone: Direct, calm, authoritative. No speculation."""
             }
         }
 
+        get_events_tool = {
+            "name": "get_calendar_events",
+            "description": "Retrieves upcoming events from the caregiver's Google Calendar. Use this when the user asks about their schedule, upcoming appointments, what's on their calendar, or when they are free/busy.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "days": {
+                        "type": "integer",
+                        "description": "Number of days ahead to look for events. Defaults to 14."
+                    },
+                    "calendar_id": {
+                        "type": "string",
+                        "description": "The calendar ID. Defaults to the caregiver's email."
+                    }
+                },
+                "required": []
+            }
+        }
+
         ext_tool = {
             "name": "call_tool_ext",
             "description": "Executes Google Search, Maps lookup, or URL reading. Use for medical research, finding nearby pharmacies/clinics, or reading web pages.",
@@ -173,7 +194,7 @@ Tone: Direct, calm, authoritative. No speculation."""
             }
         }
 
-        self.tools = [message_tool, email_tool, book_event_tool, ext_tool]
+        self.tools = [message_tool, email_tool, book_event_tool, get_events_tool, ext_tool]
 
     @staticmethod
     def send_email(
@@ -278,6 +299,60 @@ Tone: Direct, calm, authoritative. No speculation."""
             return f"Calendar event created: {created_event.get('htmlLink', 'success')}"
         except Exception as e:
             return f"Failed to create calendar event: {str(e)}"
+
+    @staticmethod
+    def get_calendar_events(
+        days: int = 14,
+        calendar_id: str = None,
+    ) -> str:
+        """Retrieve upcoming events from Google Calendar using OAuth credentials (same as the calendar tab)."""
+        try:
+            import sys
+            sys.path.insert(0, os.path.dirname(__file__))
+            from gmail_reader import GmailReader
+            from calendar_service import CalendarService
+
+            reader = GmailReader()
+            cal_service = CalendarService(reader.creds)
+
+            now = datetime.datetime.utcnow()
+            time_max = now + datetime.timedelta(days=days)
+
+            items = cal_service.get_events(time_min=now, time_max=time_max)
+
+            if not items:
+                return f"No upcoming events found in the next {days} days."
+
+            lines = [f"Found {len(items)} upcoming event(s) in the next {days} days:\n"]
+            for ev in items:
+                start = ev.get("start", "")
+                end = ev.get("end", "")
+                summary = ev.get("summary", "(No title)")
+                description = ev.get("description", "")
+                location = ev.get("location", "")
+
+                line = f"- {summary}"
+                if start:
+                    try:
+                        dt = datetime.datetime.fromisoformat(start.replace("Z", "+00:00"))
+                        line += f" | {dt.strftime('%A, %B %d at %I:%M %p')}"
+                    except ValueError:
+                        line += f" | {start}"
+                if end:
+                    try:
+                        dt_end = datetime.datetime.fromisoformat(end.replace("Z", "+00:00"))
+                        line += f" - {dt_end.strftime('%I:%M %p')}"
+                    except ValueError:
+                        pass
+                if location:
+                    line += f" | Location: {location}"
+                if description:
+                    line += f" | Notes: {description[:100]}"
+                lines.append(line)
+
+            return "\n".join(lines)
+        except Exception as e:
+            return f"Failed to retrieve calendar events: {str(e)}"
 
     def call_tool_ext(self, content: str = "") -> str:
         """Execute an extended Google tool (Search, Maps, URL Context)."""

@@ -483,40 +483,6 @@ async def communicate_agent(request: AgentRequest):
 
 
 
-# ============ AUTONOMOUS AGENT ENDPOINTS ============
-
-@app.post("/agent/chat")
-async def agent_chat(request: AgentChatRequest):
-    """
-    Send a natural language prompt to the autonomous CareLink agent.
-    The agent can autonomously:
-    - Send emails to doctors/contacts
-    - Book Google Calendar events
-    - Send Telegram messages
-    - Search the web for medical info
-    - Look up nearby pharmacies/clinics
-    - Read web pages for context
-
-    Args:
-        request: AgentChatRequest with prompt and optional patient context
-    
-    Returns:
-        Agent response with text and list of actions taken
-    """
-    try:
-        result = await run_agent(
-            prompt=request.prompt,
-            patient_context=request.patient_context
-        )
-        return {
-            "success": result.get("success", False),
-            "response": result.get("response", ""),
-            "actions_taken": result.get("actions_taken", [])
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 # ============ TASK QUEUE SYSTEM ============
 
 from agent import get_telegram_updates
@@ -850,6 +816,7 @@ async def agent_chat(request: AgentChatRequest):
     The agent can autonomously:
     - Send emails to doctors/contacts
     - Book Google Calendar events
+    - Read/list upcoming Google Calendar events
     - Send Telegram messages
     - Search the web for medical info
     - Look up nearby pharmacies/clinics
