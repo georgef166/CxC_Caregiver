@@ -26,7 +26,6 @@ app = FastAPI(
     description="AI-powered email management system with Gemini AI",
     version="1.0.0"
 )
-
 # CORS middleware for frontend access
 app.add_middleware(
     CORSMiddleware,
@@ -400,7 +399,6 @@ def health_check():
 async def communicate_agent(request: AgentRequest):
     res = await run(prompt=request.prompt)
     return {"success": True, "response": res}
-
 
 
 if __name__ == "__main__":
