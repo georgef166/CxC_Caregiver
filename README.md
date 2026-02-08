@@ -1,4 +1,4 @@
-# 🌍 CareGlobe
+# 🌍 CareLink
 
 **Empowering caregivers of Parkinson's patients with AI-powered tools and seamless care coordination.**
 
@@ -6,9 +6,9 @@ Built for the CxC 2026 Hackathon.
 
 ---
 
-## 🎯 What is CareGlobe?
+## 🎯 What is CareLink?
 
-CareGlobe is a comprehensive caregiving platform designed to support caregivers of Parkinson's disease patients. It bridges the gap between caregivers and patients through:
+CareLink is a comprehensive caregiving platform designed to support caregivers of Parkinson's disease patients. It bridges the gap between caregivers and patients through:
 
 - **Two-way patient-caregiver linking** with secure invite codes
 - **AI-powered symptom logging** using natural language
@@ -134,7 +134,7 @@ frontend/
 
 ## 🤖 AI Features
 
-CareGlobe uses **Gemini 2.0 Flash** via OpenRouter for:
+CareLink uses **Gemini 2.0 Flash** via OpenRouter for:
 
 | Feature | Description |
 |---------|-------------|
@@ -157,10 +157,5 @@ The AI gracefully falls back to rule-based processing when API limits are reache
 
 ## 👥 Team
 
-Built with ❤️ for the CxC 2026 Hackathon
+Built for the CxC 2026 Hackathon
 
----
-
-## 📄 License
-
-MIT License - feel free to use and modify for your own projects!
